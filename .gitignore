@@ -1,57 +1,44 @@
-# Secrets and local configuration
+
+# Secrets and environment files
 .env
 .env.*
 !.env.example
-*.pem
-*.key
-secrets/
-credentials/
 
 # Python
 __pycache__/
 *.py[cod]
 *.pyd
-.Python
-.venv/
-venv/
-env/
-ENV/
+*.egg-info/
+dist/
+build/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
 .coverage
 htmlcov/
-dist/
-build/
-*.egg-info/
 
-# Node / frontend
-node_modules/
-.next/
-dist/
-coverage/
-.vite/
+# Virtual environments
+.venv/
+venv/
+env/
 
 # Editors and operating systems
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
-*.swp
 
-# Local databases and generated artifacts
+# Local databases and logs
+*.db
 *.sqlite
 *.sqlite3
-*.db
-logs/
-tmp/
-temp/
-artifacts/
-outputs/
-checkpoints/
+*.log
 
-# Colab / notebooks
-.ipynb_checkpoints/
+# Frontend dependencies and build outputs (for later phases)
+node_modules/
+dist/
+build/
 
-# OS-generated archives
-*.zip
+# Test and tool caches
+.tox/
+.nox/

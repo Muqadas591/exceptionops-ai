@@ -1,0 +1,22 @@
+
+services:
+  db:
+    image: postgres:16
+    container_name: exceptionops-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: exceptionops
+      POSTGRES_USER: exceptionops
+      POSTGRES_PASSWORD: change_me_local_only
+    ports:
+      - "5433:5432"
+    volumes:
+      - exceptionops_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U exceptionops -d exceptionops"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  exceptionops_postgres_data:

@@ -88,3 +88,44 @@ Later phases will add exact installation and execution commands for the backend 
 ## License
 
 This project is licensed under the MIT License; see [LICENSE](LICENSE).
+## Phase 1 — Backend Foundation and Database
+
+**Status:** Implemented locally; validate tests and migration before release.
+
+### Technology Stack
+
+- Python 3.11+
+- FastAPI and Uvicorn
+- Pydantic Settings
+- SQLAlchemy 2.x
+- PostgreSQL
+- Alembic database migrations
+- Pytest and HTTPX
+
+### Current Capabilities
+
+- FastAPI application factory and interactive OpenAPI documentation
+- Environment-based application configuration
+- PostgreSQL connection and session management
+- Version-controlled database migrations
+- Initial supplier, invoice, purchase order, exception, and audit-event models
+- Basic duplicate invoice protection using a supplier and invoice-number uniqueness constraint
+- Health and database readiness endpoints
+- Automated tests using an isolated SQLite test database
+
+### Run Locally
+
+1. Create and activate a Python virtual environment.
+2. Install development dependencies with `python -m pip install -e ".[dev]"`.
+3. Create `.env` from `.env.example`.
+4. Start PostgreSQL with `docker compose up -d db`.
+5. Apply migrations with `alembic upgrade head`.
+6. Start the API with `uvicorn app.main:app --reload`.
+7. Open `http://127.0.0.1:8000/docs`.
+8. Run tests with `pytest`.
+
+### Current Limitations
+
+Invoice ingestion, AI extraction, business-rule evaluation, authentication, approval workflows, and accounting integrations are not implemented in this phase. The database is a local development database; production deployment and security hardening remain future work.
+
+No real payments or accounting actions are executed.
