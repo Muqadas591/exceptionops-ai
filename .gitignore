@@ -1,0 +1,57 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+credentials/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+.Python
+.venv/
+venv/
+env/
+ENV/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# Node / frontend
+node_modules/
+.next/
+dist/
+coverage/
+.vite/
+
+# Editors and operating systems
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+
+# Local databases and generated artifacts
+*.sqlite
+*.sqlite3
+*.db
+logs/
+tmp/
+temp/
+artifacts/
+outputs/
+checkpoints/
+
+# Colab / notebooks
+.ipynb_checkpoints/
+
+# OS-generated archives
+*.zip
