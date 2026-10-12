@@ -5,10 +5,12 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from app import models  # noqa: F401 - register models
+from app.core.config import get_settings
 from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
-from app import models  # noqa: F401 - register models
+import app.services.document_ingestion as ingestion_service
 
 
 @pytest.fixture
@@ -29,7 +31,25 @@ def test_engine():
 
 
 @pytest.fixture
-def client(test_engine):
+def document_storage(tmp_path, monkeypatch):
+    settings = get_settings()
+
+    monkeypatch.setattr(
+        settings,
+        "document_storage_dir",
+        str(tmp_path),
+    )
+    monkeypatch.setattr(
+        ingestion_service,
+        "get_settings",
+        lambda: settings,
+    )
+
+    return tmp_path
+
+
+@pytest.fixture
+def client(test_engine, document_storage):
     TestingSessionLocal = sessionmaker(
         bind=test_engine,
         autoflush=False,

@@ -42,3 +42,17 @@ build/
 # Test and tool caches
 .tox/
 .nox/
+
+# Uploaded documents and local storage
+.local_storage/
+storage/
+uploads/
+
+# Never commit uploaded business documents
+*.pdf
+*.csv
+*.txt
+# Uploaded documents and local storage
+.local_storage/
+storage/
+uploads/

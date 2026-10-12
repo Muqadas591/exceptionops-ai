@@ -15,6 +15,10 @@ class Settings(BaseSettings):
         "change_me_local_only@localhost:5432/exceptionops"
     )
 
+    # Phase 2 document ingestion settings.
+    max_upload_size_bytes: int = 10 * 1024 * 1024
+    document_storage_dir: str = ".local_storage/documents"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

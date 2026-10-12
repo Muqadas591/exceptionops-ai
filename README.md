@@ -129,3 +129,44 @@ This project is licensed under the MIT License; see [LICENSE](LICENSE).
 Invoice ingestion, AI extraction, business-rule evaluation, authentication, approval workflows, and accounting integrations are not implemented in this phase. The database is a local development database; production deployment and security hardening remain future work.
 
 No real payments or accounting actions are executed.
+
+## Phase 2 — Secure Document Ingestion
+
+**Status:** Implemented locally; validate migrations and automated tests before release.
+
+### Capabilities
+
+- Upload PDF, TXT, and CSV documents through a FastAPI endpoint.
+- Validate allowed extensions, file size, basic file signatures, and UTF-8 text.
+- Generate unique storage keys instead of trusting supplied filenames.
+- Calculate SHA-256 checksums and prevent duplicate content records.
+- Persist document metadata in PostgreSQL using SQLAlchemy.
+- Store document contents separately from database metadata.
+- List documents, retrieve metadata, and download stored content through API routes.
+- Run automated tests for successful uploads, invalid files, duplicate content, size limits, and retrieval.
+
+### API Endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| POST | `/api/v1/documents` | Upload a document |
+| GET | `/api/v1/documents` | List document metadata |
+| GET | `/api/v1/documents/{document_id}` | Retrieve metadata |
+| GET | `/api/v1/documents/{document_id}/content` | Download document content |
+| GET | `/api/v1/health` | Check application health |
+| GET | `/api/v1/ready` | Check database readiness |
+
+### Run and Test
+
+1. Activate the virtual environment.
+2. Install dependencies with `python -m pip install -e ".[dev]"`.
+3. Start PostgreSQL with `docker compose up -d db`.
+4. Apply database migrations with `alembic upgrade head`.
+5. Run the API with `uvicorn app.main:app --reload`.
+6. Run automated tests with `pytest -v`.
+
+### Current Limitations
+
+Document ingestion does not yet extract invoice fields or classify exceptions. Basic format checks do not replace malware scanning or secure document parsing. Authentication, authorization, tenant isolation, production storage, and production security hardening remain future work.
+
+Use synthetic documents only. Do not expose this development API publicly or upload confidential business documents.
