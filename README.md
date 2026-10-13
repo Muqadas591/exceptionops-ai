@@ -170,3 +170,51 @@ No real payments or accounting actions are executed.
 Document ingestion does not yet extract invoice fields or classify exceptions. Basic format checks do not replace malware scanning or secure document parsing. Authentication, authorization, tenant isolation, production storage, and production security hardening remain future work.
 
 Use synthetic documents only. Do not expose this development API publicly or upload confidential business documents.
+## Phase 3 — Free Invoice Extraction Pipeline
+
+**Status:** Initial extraction pipeline implemented; validate database migrations and automated tests before release.
+
+### Capabilities
+
+- Extract text from text-based PDF, TXT and CSV documents.
+- Detect invoice number, invoice date, due date, supplier name, currency and total amount using deterministic rules.
+- Return structured fields with supporting text evidence and heuristic confidence indicators.
+- Store extraction results in PostgreSQL.
+- Retrieve saved results by document ID.
+- Re-run extraction and update the existing result.
+- Keep the extraction provider independent from the API and database layers.
+
+### Free Inference Strategy
+
+The current `rule_based_v1` provider does not call a hosted AI service, download an AI model, or require an API key. It is a baseline for development and evaluation, not a general-purpose AI model.
+
+Future providers can be evaluated behind the same extraction interface. Open-source model experiments can be run in Google Colab, subject to available free compute resources.
+
+### API Endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| POST | `/api/v1/documents/{document_id}/extract` | Run extraction |
+| GET | `/api/v1/documents/{document_id}/extraction` | Retrieve the saved result |
+
+Document upload, listing, metadata retrieval and content download remain available from Phase 2.
+
+### Run and Test
+
+1. Activate the project virtual environment.
+2. Install dependencies with `python -m pip install -e ".[dev]"`.
+3. Apply database migrations with `alembic upgrade head`.
+4. Start the API with `uvicorn app.main:app --reload`.
+5. Run automated tests with `pytest -v`.
+6. Open `http://127.0.0.1:8000/docs` to explore the API.
+
+### Limitations
+
+- Scanned PDFs require OCR.
+- Rules may fail on unfamiliar invoice layouts.
+- Confidence indicators are heuristic, not calibrated probabilities.
+- Extraction does not validate supplier identity, purchase orders, tax calculations, duplicates across differently formatted invoices, or payment eligibility.
+- Human review and business-rule validation are required before business actions.
+- Production authentication, authorization, tenant isolation, secure deployment and document-processing hardening remain future work.
+
+Use synthetic documents during development. Do not upload confidential customer or employer documents to a public service or repository.
