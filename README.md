@@ -218,3 +218,66 @@ Document upload, listing, metadata retrieval and content download remain availab
 - Production authentication, authorization, tenant isolation, secure deployment and document-processing hardening remain future work.
 
 Use synthetic documents during development. Do not upload confidential customer or employer documents to a public service or repository.
+## Phase 4 — Business Rules & Risk Engine
+
+Phase 4 introduces a deterministic business-rules engine for evaluating extracted invoice data before downstream processing.
+
+### Capabilities
+
+- Validates required invoice fields.
+- Validates invoice dates, due dates, currency format, and total amount.
+- Flags low-confidence extracted fields.
+- Detects potential duplicate invoices using normalized supplier names and invoice numbers.
+- Calculates an explainable risk score from 0 to 100.
+- Stores the latest evaluation for each document.
+- Returns structured findings with rule codes, severity, messages, and field names.
+- Exposes API endpoints for running and retrieving evaluations.
+
+### Evaluation decisions
+
+- `ready_for_matching`: basic validation passed; further matching checks are still required.
+- `needs_review`: one or more business-rule findings require review.
+- `blocked`: a hard validation failure prevents normal processing.
+
+These decisions are internal workflow states, not authorization to pay an invoice.
+
+### API endpoints
+
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/v1/documents/{document_id}/evaluate` | Evaluate the latest extraction |
+| GET | `/api/v1/documents/{document_id}/evaluation` | Retrieve the latest evaluation |
+
+### Technology
+
+- Python
+- FastAPI
+- SQLAlchemy
+- PostgreSQL
+- Alembic
+- Pydantic
+- pytest
+
+### AI and cost strategy
+
+The Phase 4 rules engine uses deterministic Python logic and does not require a paid AI API key. Phase 3's extraction confidence is treated as a review signal, not a calibrated probability.
+
+### Current limitations
+
+- Duplicate detection uses exact normalized supplier-name and invoice-number matching.
+- Purchase-order and goods-receipt matching are not implemented yet.
+- A passing evaluation does not mean an invoice is approved for payment.
+- Accounting-system integration and real payment execution are outside this phase.
+- Scanned PDF OCR and advanced extraction remain separate capabilities.
+
+### Run tests
+
+```powershell
+pytest -v
+```
+
+### Database migration
+
+```powershell
+alembic upgrade head
+```
