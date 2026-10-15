@@ -7,7 +7,8 @@ from app.models.extraction_result import ExtractionResult
 from app.models.invoice import Invoice
 from app.models.purchase_order import PurchaseOrder
 from app.models.supplier import Supplier
-
+from app.models.workflow_event import WorkflowEvent
+from app.models.workflow_run import WorkflowRun
 __all__ = [
     "AuditEvent",
     "BusinessEvaluation",
@@ -17,4 +18,6 @@ __all__ = [
     "Invoice",
     "PurchaseOrder",
     "Supplier",
+    "WorkflowEvent",
+    "WorkflowRun"
 ]
