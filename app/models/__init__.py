@@ -9,6 +9,9 @@ from app.models.purchase_order import PurchaseOrder
 from app.models.supplier import Supplier
 from app.models.workflow_event import WorkflowEvent
 from app.models.workflow_run import WorkflowRun
+from app.models.action_execution import ActionExecution
+from app.models.human_review import HumanReview
+from app.models.review_comment import ReviewComment
 __all__ = [
     "AuditEvent",
     "BusinessEvaluation",
@@ -19,5 +22,9 @@ __all__ = [
     "PurchaseOrder",
     "Supplier",
     "WorkflowEvent",
-    "WorkflowRun"
+    "WorkflowRun",
+    "ActionExecution",
+    "HumanReview",
+    "ReviewComment"
+
 ]

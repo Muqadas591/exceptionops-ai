@@ -281,3 +281,50 @@ pytest -v
 ```powershell
 alembic upgrade head
 ```
+## Phase 6 — Human Approval and Action Connectors
+
+Phase 6 extends ExceptionOps AI with a human-in-the-loop invoice review process and controlled action execution.
+
+### Features
+
+- Persistent human review records and reviewer assignment
+- Exception queue with status and assignment filters
+- Review comments, correction requests, approval, and rejection
+- Environment-backed reviewer and action-operator authorization
+- Safe email draft generation without sending email
+- Simulated accounting and webhook connectors
+- Persistent action execution outcomes and retry attempts
+- Approval checks before every action execution
+- Database migrations and automated API tests
+
+### Review Workflow
+
+1. Upload an invoice document.
+2. Extract invoice fields.
+3. Evaluate the document using business rules.
+4. Create a workflow and a human review.
+5. Assign a reviewer and record comments.
+6. Approve or reject the proposed action.
+7. Execute an authorized simulated connector.
+8. Inspect the action result and retry eligible failures.
+
+### API Routes
+
+| Purpose | Endpoint |
+|---|---|
+| Exception queue | `GET /api/v1/reviews/queue` |
+| Create review | `POST /api/v1/workflows/{workflow_id}/review` |
+| Assign reviewer | `POST /api/v1/reviews/{review_id}/assign` |
+| Add comment | `POST /api/v1/reviews/{review_id}/comments` |
+| Request correction | `POST /api/v1/reviews/{review_id}/request-correction` |
+| Approve review | `POST /api/v1/reviews/{review_id}/approve` |
+| Reject review | `POST /api/v1/reviews/{review_id}/reject` |
+| Execute action | `POST /api/v1/reviews/{review_id}/actions` |
+| Inspect action | `GET /api/v1/actions/{action_id}` |
+| Retry failed action | `POST /api/v1/actions/{action_id}/retry` |
+
+### Safety and Scope
+
+Email actions create drafts only. Accounting and webhook connectors are simulated and do not contact external systems. Consequential actions require both a valid action-operator token and an approved review.
+
+This phase is a portfolio-grade prototype, not a production financial integration. Production deployment requires stronger identity and role management, connector-level idempotency, transaction reconciliation, and operational monitoring.

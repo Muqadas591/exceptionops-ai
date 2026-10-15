@@ -17,6 +17,11 @@ EXPECTED_TABLES = {
     "documents",
     "extraction_results",
     "business_evaluations",
+    "workflow_runs",
+    "workflow_events",
+    "human_reviews",
+    "review_comments",
+    "action_executions",
 }
 
 
