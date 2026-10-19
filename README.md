@@ -328,3 +328,56 @@ Phase 6 extends ExceptionOps AI with a human-in-the-loop invoice review process 
 Email actions create drafts only. Accounting and webhook connectors are simulated and do not contact external systems. Consequential actions require both a valid action-operator token and an approved review.
 
 This phase is a portfolio-grade prototype, not a production financial integration. Production deployment requires stronger identity and role management, connector-level idempotency, transaction reconciliation, and operational monitoring.
+
+## Phase 7 — Frontend Exception Queue and Reviewer Dashboard
+
+Phase 7 introduces a React and TypeScript dashboard for human-in-the-loop invoice exception management.
+
+### Frontend Features
+
+- Live exception queue with status and reviewer filters
+- Review creation from an existing evaluated workflow
+- Invoice extraction and business evaluation display
+- Reviewer assignment and review comments
+- Correction requests, approval and rejection
+- Workflow event history
+- Safe email draft creation
+- Simulated accounting and webhook actions
+- Action outcome inspection and retry
+- Responsive layout for desktop and mobile
+- Typed API client with centralized error handling
+
+### Technology
+
+- React
+- TypeScript
+- Vite
+- React Router
+- CSS
+- FastAPI REST API
+
+### Development
+
+Start the backend from the repository root:
+
+```powershell
+uvicorn app.main:app --reload
+```
+
+Start the frontend:
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+Build the frontend:
+
+```powershell
+npm run build
+```
+
+### Safety
+
+The frontend uses the Phase 6 authorization headers for the portfolio demo. Email actions create drafts only, and accounting and webhook connectors remain simulated. Production deployment requires individual authenticated identities, backend role-based access control, secure secret management, and operational safeguards.

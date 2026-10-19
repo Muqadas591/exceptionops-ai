@@ -56,3 +56,8 @@ uploads/
 .local_storage/
 storage/
 uploads/
+node_modules/
+dist/
+.env
+.env.*
+!.env.example

@@ -8,6 +8,8 @@ from app.api.routes.health import router as health_router
 from app.api.routes.workflows import router as workflows_router
 from app.api.routes.reviews import router as reviews_router
 from app.api.routes.actions import router as actions_router
+from fastapi.middleware.cors import CORSMiddleware
+
 def create_app() -> FastAPI:
     app = FastAPI(
         title="ExceptionOps AI",
@@ -17,6 +19,20 @@ def create_app() -> FastAPI:
             "business-rule evaluation."
         ),
         version="0.4.0",
+    )
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+        ],
+        allow_credentials=False,
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=[
+            "Content-Type",
+            "X-Reviewer-Token",
+            "X-Action-Token",
+        ],
     )
 
     # Root endpoint
