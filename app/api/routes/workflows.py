@@ -12,9 +12,12 @@ from app.services.workflow_service import (
     resolve_workflow,
     retry_workflow,
 )
+from app.core.authorization import require_reviewer
 
-
-router = APIRouter(tags=["Workflow Orchestration"])
+router = APIRouter(
+    tags=["Workflow Orchestration"],
+    dependencies=[Depends(require_reviewer)],
+)
 
 
 @router.post(

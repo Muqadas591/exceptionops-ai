@@ -26,11 +26,12 @@ from app.services.document_storage import (
     DocumentValidationError,
     UploadTooLargeError,
 )
-
+from app.core.authorization import require_reviewer
 
 router = APIRouter(
     prefix="/documents",
     tags=["Documents"],
+    dependencies=[Depends(require_reviewer)],
 )
 
 

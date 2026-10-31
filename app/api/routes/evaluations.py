@@ -8,12 +8,12 @@ from app.services.business_evaluation import (
     evaluate_document,
     get_document_evaluation,
 )
-
+from app.core.authorization import require_reviewer
 router = APIRouter(
     prefix="/documents",
     tags=["Business Evaluations"],
+    dependencies=[Depends(require_reviewer)],
 )
-
 
 @router.post(
     "/{document_id}/evaluate",

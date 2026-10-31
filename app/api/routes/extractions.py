@@ -7,11 +7,12 @@ from app.db.session import get_db
 from app.models.extraction_result import ExtractionResult
 from app.schemas.extraction import ExtractionResultRead
 from app.services.invoice_extraction import extract_invoice_document
-
+from app.core.authorization import require_reviewer
 
 router = APIRouter(
     prefix="/documents",
     tags=["Invoice Extraction"],
+    dependencies=[Depends(require_reviewer)],
 )
 
 

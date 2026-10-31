@@ -9,7 +9,7 @@ from app.api.routes.workflows import router as workflows_router
 from app.api.routes.reviews import router as reviews_router
 from app.api.routes.actions import router as actions_router
 from fastapi.middleware.cors import CORSMiddleware
-
+from app.api.routes.auth import router as auth_router
 def create_app() -> FastAPI:
     app = FastAPI(
         title="ExceptionOps AI",
@@ -52,6 +52,7 @@ def create_app() -> FastAPI:
     app.include_router(workflows_router, prefix="/api/v1")
     app.include_router(reviews_router, prefix="/api/v1")
     app.include_router(actions_router, prefix="/api/v1")
+    app.include_router(auth_router, prefix="/api/v1")
 
 
     return app

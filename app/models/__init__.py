@@ -12,6 +12,7 @@ from app.models.workflow_run import WorkflowRun
 from app.models.action_execution import ActionExecution
 from app.models.human_review import HumanReview
 from app.models.review_comment import ReviewComment
+from app.models.user import User
 __all__ = [
     "AuditEvent",
     "BusinessEvaluation",
@@ -26,5 +27,8 @@ __all__ = [
     "ActionExecution",
     "HumanReview",
     "ReviewComment"
+      "HumanReview",
+    "ReviewComment",
+    "User"
 
 ]

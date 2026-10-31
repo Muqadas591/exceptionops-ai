@@ -1,4 +1,3 @@
-
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -15,9 +14,13 @@ class Settings(BaseSettings):
         "change_me_local_only@localhost:5432/exceptionops"
     )
 
-    # Phase 2 document ingestion settings.
+    # Document ingestion.
     max_upload_size_bytes: int = 10 * 1024 * 1024
     document_storage_dir: str = ".local_storage/documents"
+
+    # Authentication.
+    auth_secret_key: str = ""
+    access_token_expire_minutes: int = 30
 
     model_config = SettingsConfigDict(
         env_file=".env",
