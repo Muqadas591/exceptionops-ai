@@ -1,3 +1,4 @@
+
 def test_phase6_routes_are_registered(client):
     response = client.get("/openapi.json")
 
@@ -15,67 +16,50 @@ def test_phase6_routes_are_registered(client):
     assert "/api/v1/actions/{action_id}/retry" in paths
 
 
-def test_action_execution_requires_authorization(
-    client,
-    monkeypatch,
+def test_review_queue_rejects_unauthenticated_request(
+    unauthenticated_client,
 ):
-    monkeypatch.delenv(
-        "EXCEPTIONOPS_ACTION_TOKEN",
-        raising=False,
+    response = unauthenticated_client.get(
+        "/api/v1/reviews/queue"
     )
 
-    response = client.post(
+    assert response.status_code == 401
+
+
+def test_action_execution_rejects_unauthenticated_request(
+    unauthenticated_client,
+):
+    response = unauthenticated_client.post(
         "/api/v1/reviews/999/actions",
+        headers={
+            "Idempotency-Key": "stage84-phase6-auth",
+        },
         json={"action_type": "accounting_simulation"},
     )
 
-    assert response.status_code == 503
+    assert response.status_code == 401
 
 
-def test_review_queue_requires_authorization(
-    client,
-    monkeypatch,
-):
-    monkeypatch.delenv(
-        "EXCEPTIONOPS_REVIEWER_TOKEN",
-        raising=False,
-    )
-
-    response = client.get("/api/v1/reviews/queue")
-
-    assert response.status_code == 503
-
-
-def test_action_does_not_execute_for_missing_review(
-    client,
-    monkeypatch,
-):
-    monkeypatch.setenv(
-        "EXCEPTIONOPS_ACTION_TOKEN",
-        "test-action-token",
-    )
-
+def test_action_does_not_execute_for_missing_review(client):
     response = client.post(
         "/api/v1/reviews/999/actions",
-        headers={"X-Action-Token": "test-action-token"},
+        headers={
+            "X-Action-Token": "test-action-token",
+            "Idempotency-Key": "stage84-phase6-missing",
+        },
         json={"action_type": "accounting_simulation"},
     )
 
     assert response.status_code == 404
 
 
-def test_unsupported_action_type_is_rejected(
-    client,
-    monkeypatch,
-):
-    monkeypatch.setenv(
-        "EXCEPTIONOPS_ACTION_TOKEN",
-        "test-action-token",
-    )
-
+def test_unsupported_action_type_is_rejected(client):
     response = client.post(
         "/api/v1/reviews/999/actions",
-        headers={"X-Action-Token": "test-action-token"},
+        headers={
+            "X-Action-Token": "test-action-token",
+            "Idempotency-Key": "stage84-phase6-invalid",
+        },
         json={"action_type": "execute_arbitrary_url"},
     )
 

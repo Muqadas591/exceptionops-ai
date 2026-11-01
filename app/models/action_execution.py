@@ -5,10 +5,12 @@ from typing import Any
 from sqlalchemy import (
     CheckConstraint,
     ForeignKey,
+    Index,
     Integer,
     JSON,
     String,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -21,13 +23,26 @@ class ActionExecution(TimestampMixin, Base):
     __table_args__ = (
         CheckConstraint(
             "status IN ("
-            "'pending', 'succeeded', 'failed'"
+            "'pending', "
+            "'in_progress', "
+            "'succeeded', "
+            "'failed', "
+            "'uncertain'"
             ")",
             name="ck_action_execution_status",
         ),
         CheckConstraint(
             "attempt_count >= 0",
             name="ck_action_execution_attempt_count",
+        ),
+        UniqueConstraint(
+            "idempotency_key",
+            name="uq_action_execution_idempotency_key",
+        ),
+        Index(
+            "ix_action_execution_status_updated",
+            "status",
+            "updated_at",
         ),
     )
 
@@ -60,6 +75,20 @@ class ActionExecution(TimestampMixin, Base):
         Integer,
         nullable=False,
         default=0,
+    )
+
+    # A client must reuse the same key when repeating the same logical
+    # request. A database uniqueness constraint prevents duplicate records.
+    idempotency_key: Mapped[str] = mapped_column(
+        String(128),
+        nullable=False,
+    )
+
+    # SHA-256 fingerprint of the action type and canonical request payload.
+    # Prevents one idempotency key from being reused for different input.
+    request_fingerprint: Mapped[str] = mapped_column(
+        String(64),
+        nullable=False,
     )
 
     request_payload: Mapped[dict[str, Any]] = mapped_column(
