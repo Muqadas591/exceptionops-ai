@@ -381,3 +381,88 @@ npm run build
 ### Safety
 
 The frontend uses the Phase 6 authorization headers for the portfolio demo. Email actions create drafts only, and accounting and webhook connectors remain simulated. Production deployment requires individual authenticated identities, backend role-based access control, secure secret management, and operational safeguards.
+
+## Local Deployment and Document Storage
+
+The local Docker Compose setup runs the FastAPI backend and PostgreSQL on this
+computer. Uploaded documents are stored on the host filesystem; no cloud
+document-storage provider is required.
+
+### Architecture and persistence
+
+- **Backend:** FastAPI in Docker
+- **Frontend:** React, TypeScript, and Vite, run locally
+- **Database:** PostgreSQL in Docker, persisted in a named volume
+- **Documents:** Host directory mounted at `/app/local_documents` in the API
+- **Network exposure:** API and database ports are bound to loopback
+
+The database volume and document directory are separate data stores. Preserve
+both, along with matching database and document backups, to retain application
+data. Local storage does not protect against disk loss or accidental deletion.
+Use synthetic documents for this portfolio project; do not upload confidential
+business data.
+
+### Configure and run
+
+1. Copy `.env.example` to `.env`, set a unique `AUTH_SECRET_KEY`, and set
+   `POSTGRES_PASSWORD` to a strong URL-safe password. Keep `.env` private.
+2. Set `LOCAL_DOCUMENT_DIR` in `.env` to
+   `C:/ExceptionOpsData/documents`. Create that folder and
+   `C:/ExceptionOpsData/backups` if they do not exist. Set `API_PORT` to
+   `8001` if another application already uses port `8000`.
+3. Copy `.env.docker.example` to `.env.docker`.
+4. Validate and build, then start the services:
+
+   ```powershell
+   docker compose config --quiet
+   docker compose build api
+   docker compose up -d
+   ```
+
+5. Apply the database migrations:
+
+   ```powershell
+   docker compose exec api alembic current
+   docker compose exec api alembic heads
+   docker compose exec api alembic upgrade head
+   ```
+
+6. Check `docker compose ps` and `docker compose logs --tail 100 api`.
+   The API is available at `http://localhost:<API_PORT>` (default `8000`).
+7. Start the frontend in another terminal:
+
+   ```powershell
+   cd frontend
+   npm install
+   npm run dev
+   ```
+
+   The API client defaults to `http://127.0.0.1:8000`. If you changed
+   `API_PORT`, set `VITE_API_BASE_URL` in `frontend/.env.development` to
+   `http://127.0.0.1:<API_PORT>`.
+
+Do not run `docker compose down -v` unless you intend to delete the database
+volume. A normal `docker compose down` preserves it.
+
+### Backups
+
+Back up both the document directory and PostgreSQL. For example:
+
+```powershell
+$timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
+$backupDir = "C:\ExceptionOpsData\backups\$timestamp"
+New-Item -ItemType Directory -Force -Path "$backupDir\documents"
+if (Get-ChildItem "C:\ExceptionOpsData\documents" -Force) {
+  Copy-Item "C:\ExceptionOpsData\documents\*" "$backupDir\documents" -Recurse -Force
+}
+$dump = Start-Process docker -ArgumentList @(
+  "compose", "exec", "-T", "db", "pg_dump",
+  "-U", "exceptionops", "-d", "exceptionops"
+) -RedirectStandardOutput "$backupDir\exceptionops.sql" -Wait -PassThru
+if ($dump.ExitCode -ne 0) { throw "PostgreSQL backup failed." }
+```
+
+Treat backups as private business data and test restore procedures with
+synthetic data before relying on them. A remote deployment would require a
+separately designed and secured way for its backend to access documents; this
+local setup does not make the application public.

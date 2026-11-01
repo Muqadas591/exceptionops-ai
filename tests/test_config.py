@@ -92,6 +92,41 @@ def test_production_rejects_weak_auth_secret():
         )
 
 
+def test_production_rejects_placeholder_auth_secret():
+    with pytest.raises(ValidationError):
+        Settings(
+            _env_file=None,
+            app_env="production",
+            debug=False,
+            auth_secret_key=(
+                "replace_with_a_random_secret_of_at_least_32_characters"
+            ),
+            database_url=(
+                "postgresql+psycopg://user:password@db.example.com/app"
+            ),
+            cors_allowed_origins="https://app.example.com",
+            allowed_hosts="api.example.com",
+            document_storage_dir="/var/data/exceptionops/documents",
+        )
+
+
+def test_production_rejects_placeholder_database_password():
+    with pytest.raises(ValidationError):
+        Settings(
+            _env_file=None,
+            app_env="production",
+            debug=False,
+            auth_secret_key="a" * 48,
+            database_url=(
+                "postgresql+psycopg://user:replace_with_a_password"
+                "@db.example.com/app"
+            ),
+            cors_allowed_origins="https://app.example.com",
+            allowed_hosts="api.example.com",
+            document_storage_dir="/var/data/exceptionops/documents",
+        )
+
+
 def test_production_rejects_debug_mode():
     with pytest.raises(ValidationError):
         Settings(

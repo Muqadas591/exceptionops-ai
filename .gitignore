@@ -3,6 +3,7 @@
 .env
 .env.*
 !.env.example
+!.env.docker.example
 
 # Python
 __pycache__/
@@ -47,17 +48,9 @@ build/
 .local_storage/
 storage/
 uploads/
-
-# Never commit uploaded business documents
-*.pdf
-*.csv
-*.txt
-# Uploaded documents and local storage
-.local_storage/
-storage/
-uploads/
-node_modules/
-dist/
-.env
-.env.*
-!.env.example
+local_documents/
+documents/
+data/private/
+data/uploads/
+backups/
+/auth_debug_bundle.txt

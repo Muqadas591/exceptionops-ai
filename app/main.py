@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from app.api.routes.actions import router as actions_router
+from app.api.routes.auth import router as auth_router
 from app.api.routes.documents import router as documents_router
 from app.api.routes.evaluations import router as evaluations_router
 from app.api.routes.extractions import router as extractions_router
@@ -142,6 +143,11 @@ def create_app() -> FastAPI:
     # Register existing API routers using the configured API prefix.
     app.include_router(
         health_router,
+        prefix=settings.api_v1_prefix,
+    )
+
+    app.include_router(
+        auth_router,
         prefix=settings.api_v1_prefix,
     )
 

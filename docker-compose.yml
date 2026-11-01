@@ -7,16 +7,36 @@ services:
     environment:
       POSTGRES_DB: exceptionops
       POSTGRES_USER: exceptionops
-      POSTGRES_PASSWORD: change_me_local_only
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
     ports:
-      - "5433:5432"
+      - "127.0.0.1:5433:5432"
     volumes:
       - exceptionops_postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U exceptionops -d exceptionops"]
-      interval: 5s
+      interval: 10s
       timeout: 5s
-      retries: 10
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env.docker
+    environment:
+      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:?Set AUTH_SECRET_KEY in .env}
+      DATABASE_URL: postgresql+psycopg://exceptionops:${POSTGRES_PASSWORD}@db:5432/exceptionops
+    ports:
+      - "127.0.0.1:${API_PORT:-8000}:8000"
+    volumes:
+      - type: bind
+        source: ${LOCAL_DOCUMENT_DIR:?Set LOCAL_DOCUMENT_DIR in .env}
+        target: /app/local_documents
+    depends_on:
+      db:
+        condition: service_healthy
 
 volumes:
   exceptionops_postgres_data:

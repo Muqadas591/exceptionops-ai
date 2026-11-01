@@ -107,12 +107,19 @@ class Settings(BaseSettings):
         if self.debug:
             errors.append("DEBUG must be false in production.")
 
-        if len(self.auth_secret_key) < 32:
+        if (
+            len(self.auth_secret_key) < 32
+            or self.auth_secret_key.startswith("replace_with_")
+        ):
             errors.append(
-                "AUTH_SECRET_KEY must contain at least 32 characters."
+                "AUTH_SECRET_KEY must be a non-placeholder value with "
+                "at least 32 characters."
             )
 
-        if "change_me_local_only" in self.database_url:
+        if (
+            "change_me_local_only" in self.database_url
+            or "replace_with_" in self.database_url
+        ):
             errors.append(
                 "DATABASE_URL still contains the local placeholder password."
             )
