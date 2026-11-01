@@ -6,7 +6,10 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app import models  # noqa: F401 - register models
-from app.core.config import get_settings
+from app.core.authorization import (
+    require_action_operator,
+    require_reviewer,
+)
 from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
@@ -32,6 +35,8 @@ def test_engine():
 
 @pytest.fixture
 def document_storage(tmp_path, monkeypatch):
+    from app.core.config import get_settings
+
     settings = get_settings()
 
     monkeypatch.setattr(
@@ -50,6 +55,42 @@ def document_storage(tmp_path, monkeypatch):
 
 @pytest.fixture
 def client(test_engine, document_storage):
+    """Authenticated test client for business-logic tests."""
+
+    TestingSessionLocal = sessionmaker(
+        bind=test_engine,
+        autoflush=False,
+        expire_on_commit=False,
+    )
+
+    def override_get_db():
+        db = TestingSessionLocal()
+        try:
+            yield db
+        finally:
+            db.close()
+
+    app.dependency_overrides[get_db] = override_get_db
+
+    # Test-only authorization overrides.
+    # Production authentication remains unchanged.
+    app.dependency_overrides[require_reviewer] = (
+        lambda: "test-reviewer@example.com"
+    )
+    app.dependency_overrides[require_action_operator] = (
+        lambda: "test-operator@example.com"
+    )
+
+    with TestClient(app) as test_client:
+        yield test_client
+
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def unauthenticated_client(test_engine, document_storage):
+    """Client without authorization overrides."""
+
     TestingSessionLocal = sessionmaker(
         bind=test_engine,
         autoflush=False,

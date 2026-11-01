@@ -33,3 +33,4 @@ def test_openapi_documentation_is_available(client):
 
     assert response.status_code == 200
     assert "paths" in response.json()
+
