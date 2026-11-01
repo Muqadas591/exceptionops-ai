@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.models.human_review import HumanReview
 from app.models.review_comment import ReviewComment
 from app.models.workflow_run import WorkflowRun
-
+from sqlalchemy import func
 
 def _review_query(db: Session):
     return db.query(HumanReview).options(
@@ -75,7 +75,16 @@ def list_exception_queue(
     db: Session,
     status: str | None = None,
     assigned_to: str | None = None,
+    limit: int = 20,
+    offset: int = 0,
 ) -> list[HumanReview]:
+    """
+    Return a deterministic page of reviews.
+
+    Filtering happens before pagination. The ordering uses the review
+    ID descending so consecutive requests have a stable order as long
+    as the underlying data does not change.
+    """
     query = (
         db.query(HumanReview)
         .join(
@@ -85,14 +94,46 @@ def list_exception_queue(
         .options(selectinload(HumanReview.comments))
     )
 
-    if status:
+    if status is not None:
         query = query.filter(HumanReview.status == status)
 
-    if assigned_to:
-        query = query.filter(HumanReview.assigned_to == assigned_to)
+    if assigned_to is not None:
+        query = query.filter(
+            HumanReview.assigned_to == assigned_to
+        )
 
-    return query.order_by(HumanReview.id.desc()).all()
+    return (
+        query
+        .order_by(HumanReview.id.desc())
+        .limit(limit)
+        .offset(offset)
+        .all()
+    )
 
+
+def count_exception_queue(
+    db: Session,
+    status: str | None = None,
+    assigned_to: str | None = None,
+) -> int:
+    """Count matching reviews before applying pagination."""
+    query = (
+        db.query(func.count(HumanReview.id))
+        .join(
+            WorkflowRun,
+            WorkflowRun.id == HumanReview.workflow_run_id,
+        )
+    )
+
+    if status is not None:
+        query = query.filter(HumanReview.status == status)
+
+    if assigned_to is not None:
+        query = query.filter(
+            HumanReview.assigned_to == assigned_to
+        )
+
+    return int(query.scalar() or 0)
 
 def assign_reviewer(
     db: Session,

@@ -12,20 +12,39 @@ ReviewStatus = Literal[
 ]
 
 
-class AssignReviewerRequest(BaseModel):
-    reviewer: str = Field(min_length=3, max_length=255)
+class StrictRequestModel(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        str_strip_whitespace=True,
+    )
 
 
-class ReviewCommentCreate(BaseModel):
-    body: str = Field(min_length=1, max_length=4000)
+class AssignReviewerRequest(StrictRequestModel):
+    reviewer: str = Field(
+        min_length=3,
+        max_length=255,
+    )
 
 
-class CorrectionRequest(BaseModel):
-    instructions: str = Field(min_length=3, max_length=4000)
+class ReviewCommentCreate(StrictRequestModel):
+    body: str = Field(
+        min_length=1,
+        max_length=4000,
+    )
 
 
-class ReviewDecisionRequest(BaseModel):
-    note: str = Field(min_length=3, max_length=2000)
+class CorrectionRequest(StrictRequestModel):
+    instructions: str = Field(
+        min_length=3,
+        max_length=4000,
+    )
+
+
+class ReviewDecisionRequest(StrictRequestModel):
+    note: str = Field(
+        min_length=3,
+        max_length=2000,
+    )
 
 
 class ReviewCommentRead(BaseModel):
@@ -50,4 +69,6 @@ class HumanReviewRead(BaseModel):
     decided_by: str | None
     created_at: datetime
     updated_at: datetime
-    comments: list[ReviewCommentRead] = Field(default_factory=list)
+    comments: list[ReviewCommentRead] = Field(
+        default_factory=list
+    )
