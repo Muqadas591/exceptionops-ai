@@ -1,3 +1,41 @@
+export type UserRole =
+  | "admin"
+  | "reviewer"
+  | "action_operator";
+
+export interface User {
+  id: number;
+  email: string;
+  role: UserRole;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface TokenResponse {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+  user: User;
+}
+
+export interface Document {
+  id: number;
+  original_filename: string;
+  extension: string;
+  content_type: string;
+  file_size_bytes: number;
+  checksum_sha256: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export type ReviewStatus =
   | "pending"
   | "correction_requested"
@@ -18,7 +56,12 @@ export type ActionType =
   | "accounting_simulation"
   | "webhook_simulation";
 
-export type ActionStatus = "pending" | "succeeded" | "failed";
+export type ActionStatus =
+  | "pending"
+  | "in_progress"
+  | "succeeded"
+  | "failed"
+  | "uncertain";
 
 export interface ReviewComment {
   id: number;
@@ -74,18 +117,20 @@ export interface ExtractionField {
 export interface ExtractionResult {
   id: number;
   document_id: number;
+  provider_name: string;
+  status: string;
   fields: Record<string, ExtractionField | unknown>;
-  created_at?: string;
-  updated_at?: string;
+  extracted_text_length: number;
+  error_message: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface BusinessFinding {
-  code?: string;
-  rule?: string;
-  severity?: string;
-  message?: string;
-  field?: string;
-  [key: string]: unknown;
+  rule_code: string;
+  severity: string;
+  message: string;
+  field: string | null;
 }
 
 export interface BusinessEvaluation {
@@ -96,8 +141,8 @@ export interface BusinessEvaluation {
   rules_version: string;
   findings: BusinessFinding[];
   summary: string;
-  created_at?: string;
-  updated_at?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface ActionExecution {
@@ -106,6 +151,8 @@ export interface ActionExecution {
   action_type: ActionType;
   status: ActionStatus;
   attempt_count: number;
+  idempotency_key: string;
+  request_fingerprint: string;
   request_payload: Record<string, unknown>;
   result_payload: Record<string, unknown> | null;
   last_error: string | null;
@@ -121,7 +168,9 @@ export interface ActionRequest {
   message?: string;
 }
 
-export interface AuthTokens {
-  reviewerToken: string;
-  actionToken: string;
+export interface ActionReconciliationRequest {
+  outcome:
+    | "confirmed_succeeded"
+    | "confirmed_not_executed";
+  note: string;
 }
