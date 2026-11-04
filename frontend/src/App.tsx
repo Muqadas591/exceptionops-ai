@@ -19,6 +19,10 @@ import InvoiceDetailsPage from "./pages/InvoiceDetailsPage";
 import "./styles/invoice-management.css";
 import InvoiceProcessingPage from "./pages/InvoiceProcessingPage";
 import "./styles/processing.css";
+import ExceptionQueuePage from "./pages/ExceptionQueuePage";
+import ReviewDetailsPage from "./pages/ReviewDetailsPage";
+import "./styles/reviews.css";
+
 export default function App() {
   return (
     <AuthProvider>
@@ -61,11 +65,7 @@ export default function App() {
                 <RoleGuard
                   allowedRoles={["admin", "reviewer"]}
                 >
-                  <PlaceholderPage
-                    title="Exception queue"
-                    description="Investigate invoice exceptions and manage human reviews."
-                    phase="Review workspace implementation"
-                  />
+                  <ExceptionQueuePage />
                 </RoleGuard>
               }
             />
@@ -76,11 +76,7 @@ export default function App() {
                 <RoleGuard
                   allowedRoles={["admin", "reviewer"]}
                 >
-                  <PlaceholderPage
-                    title="Review workspace"
-                    description="Inspect business findings, assign reviewers and record decisions."
-                    phase="Review workspace implementation"
-                  />
+                  <ReviewDetailsPage />
                 </RoleGuard>
               }
             />

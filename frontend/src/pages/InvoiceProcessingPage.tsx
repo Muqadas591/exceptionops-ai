@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import {
+  Link,
+  useNavigate,
+  useParams,
+} from "react-router-dom";
 
 import { getDocument } from "../api/documentsApi";
 import {
@@ -18,6 +22,7 @@ import type {
 import ExtractionPanel from "../components/processing/ExtractionPanel";
 import EvaluationPanel from "../components/processing/EvaluationPanel";
 import WorkflowPanel from "../components/processing/WorkflowPanel";
+import { reviewsApi } from "../api/reviewApi";
 
 function isNotFound(error: unknown): boolean {
   return (
@@ -107,6 +112,13 @@ export default function InvoiceProcessingPage() {
 
   const [evaluationStale, setEvaluationStale] =
     useState(false);
+  const navigate = useNavigate();
+
+  const [creatingReview, setCreatingReview] =
+    useState(false);
+
+  const [reviewCreationError, setReviewCreationError] =
+    useState("");
 
   const loadWorkspace = useCallback(async () => {
     if (numericDocumentId === null) {
@@ -334,6 +346,44 @@ export default function InvoiceProcessingPage() {
     }
   }
 
+  async function handleCreateOrOpenReview() {
+    if (!workflow) {
+      setReviewCreationError(
+        "Create a workflow before opening a human review.",
+      );
+      return;
+    }
+
+    if (
+      workflow.status !== "evaluated" &&
+      workflow.status !== "needs_review"
+    ) {
+      setReviewCreationError(
+        "A review can only be created for an evaluated workflow or one requiring review.",
+      );
+      return;
+    }
+
+    setCreatingReview(true);
+    setReviewCreationError("");
+
+    try {
+      const review = await reviewsApi.createReview(
+        workflow.id,
+      );
+
+      navigate(`/reviews/${review.id}`);
+    } catch (error) {
+      setReviewCreationError(
+        error instanceof Error
+          ? error.message
+          : "Unable to create or open the review.",
+      );
+    } finally {
+      setCreatingReview(false);
+    }
+  }
+
   if (pageLoading) {
     return (
       <main className="processing-page">
@@ -467,6 +517,49 @@ export default function InvoiceProcessingPage() {
         onAdvance={handleAdvanceWorkflow}
         onRetry={handleRetryWorkflow}
       />
+
+      {workflow &&
+        (workflow.status === "evaluated" ||
+          workflow.status === "needs_review") && (
+          <section className="processing-card">
+            <div className="processing-card-heading">
+              <div>
+                <span className="processing-step">
+                  HUMAN REVIEW
+                </span>
+
+                <h2>Exception review</h2>
+
+                <p>
+                  Create or open the human-review record
+                  associated with this workflow.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                className="processing-primary-button"
+                onClick={() =>
+                  void handleCreateOrOpenReview()
+                }
+                disabled={creatingReview}
+              >
+                {creatingReview
+                  ? "Opening review..."
+                  : "Create / open human review"}
+              </button>
+            </div>
+
+            {reviewCreationError && (
+              <div
+                className="processing-error"
+                role="alert"
+              >
+                {reviewCreationError}
+              </div>
+            )}
+          </section>
+        )}
 
       <div className="processing-bottom-note">
         <strong>Control and safety note</strong>
