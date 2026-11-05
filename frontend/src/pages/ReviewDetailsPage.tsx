@@ -311,6 +311,14 @@ export default function ReviewDetailsPage() {
 
         <div className="review-heading-actions">
           <ReviewStatusBadge status={review.status} />
+          {review.status === "approved" && (
+            <Link
+              to={`/actions?reviewId=${review.id}`}
+              className="button button-primary"
+            >
+              Open Action Center
+            </Link>
+          )}
           <button
             type="button"
             className="review-secondary-button"

@@ -22,6 +22,8 @@ import "./styles/processing.css";
 import ExceptionQueuePage from "./pages/ExceptionQueuePage";
 import ReviewDetailsPage from "./pages/ReviewDetailsPage";
 import "./styles/reviews.css";
+import ActionCenterPage from "./pages/ActionCenterPage";
+import "./styles/actions.css";
 
 export default function App() {
   return (
@@ -59,6 +61,14 @@ export default function App() {
   path="/invoices/:documentId/process"
   element={<InvoiceProcessingPage />}
 />
+<Route
+  path="/actions"
+  element={
+    <RoleGuard allowedRoles={["admin", "action_operator"]}>
+      <ActionCenterPage />
+    </RoleGuard>
+  }
+/>
             <Route
               path="/exceptions"
               element={
@@ -77,21 +87,6 @@ export default function App() {
                   allowedRoles={["admin", "reviewer"]}
                 >
                   <ReviewDetailsPage />
-                </RoleGuard>
-              }
-            />
-
-            <Route
-              path="/actions"
-              element={
-                <RoleGuard
-                  allowedRoles={["admin", "action_operator"]}
-                >
-                  <PlaceholderPage
-                    title="Action center"
-                    description="Inspect authorized connector actions and recover eligible executions."
-                    phase="Action center implementation"
-                  />
                 </RoleGuard>
               }
             />

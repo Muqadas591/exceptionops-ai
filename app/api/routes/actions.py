@@ -15,6 +15,7 @@ from app.services.action_execution_service import (
     execute_review_action,
     get_action,
     list_recovery_actions,
+    list_review_actions,
     reconcile_action,
     retry_action,
 )
@@ -62,6 +63,25 @@ def read_action_recovery_queue(
 ):
     return list_recovery_actions(
         db,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@router.get(
+    "/reviews/{review_id}/actions",
+    response_model=list[ActionExecutionRead],
+)
+def read_review_actions(
+    review_id: int,
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    db: Session = Depends(get_db),
+    actor: str = Depends(require_action_operator),
+):
+    return list_review_actions(
+        db=db,
+        review_id=review_id,
         limit=limit,
         offset=offset,
     )

@@ -532,3 +532,33 @@ def reconcile_action(
     db.refresh(action)
 
     return action
+
+
+def list_review_actions(
+    db: Session,
+    review_id: int,
+    *,
+    limit: int = 20,
+    offset: int = 0,
+) -> list[ActionExecution]:
+    review = (
+        db.query(HumanReview)
+        .filter(HumanReview.id == review_id)
+        .first()
+    )
+    if review is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Review {review_id} was not found.",
+        )
+    return (
+        db.query(ActionExecution)
+        .filter(ActionExecution.review_id == review_id)
+        .order_by(
+            ActionExecution.created_at.desc(),
+            ActionExecution.id.desc(),
+        )
+        .limit(limit)
+        .offset(offset)
+        .all()
+    )

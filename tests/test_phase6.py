@@ -12,8 +12,21 @@ def test_phase6_routes_are_registered(client):
     assert "/api/v1/reviews/{review_id}/request-correction" in paths
     assert "/api/v1/reviews/{review_id}/approve" in paths
     assert "/api/v1/reviews/{review_id}/reject" in paths
-    assert "/api/v1/reviews/{review_id}/actions" in paths
+    review_actions_path = "/api/v1/reviews/{review_id}/actions"
+    assert review_actions_path in paths
+    assert "get" in paths[review_actions_path]
     assert "/api/v1/actions/{action_id}/retry" in paths
+
+
+def test_review_action_history_route_is_registered(client):
+    response = client.get("/openapi.json")
+
+    assert response.status_code == 200
+    paths = response.json()["paths"]
+    history_path = paths["/api/v1/reviews/{review_id}/actions"]
+
+    assert "get" in history_path
+    assert "post" in history_path
 
 
 def test_review_queue_rejects_unauthenticated_request(
@@ -35,6 +48,16 @@ def test_action_execution_rejects_unauthenticated_request(
             "Idempotency-Key": "stage84-phase6-auth",
         },
         json={"action_type": "accounting_simulation"},
+    )
+
+    assert response.status_code == 401
+
+
+def test_review_action_history_rejects_unauthenticated_request(
+    unauthenticated_client,
+):
+    response = unauthenticated_client.get(
+        "/api/v1/reviews/999/actions",
     )
 
     assert response.status_code == 401
