@@ -1,6 +1,7 @@
 from uuid import uuid4
 
 from fastapi import HTTPException
+from sqlalchemy import func
 from sqlalchemy.orm import Session, selectinload
 
 from app.models.business_evaluation import BusinessEvaluation
@@ -8,6 +9,7 @@ from app.models.document import Document
 from app.models.extraction_result import ExtractionResult
 from app.models.workflow_event import WorkflowEvent
 from app.models.workflow_run import WorkflowRun
+from app.services.audit_service import record_audit_event
 from app.services.business_evaluation import evaluate_document
 
 
@@ -55,6 +57,21 @@ def _record_event(
         event_metadata=metadata or {},
     )
     db.add(event)
+    record_audit_event(
+        db,
+        event_type=f"workflow.{event_type}",
+        entity_type="workflow",
+        entity_id=workflow.id,
+        description=message,
+        actor_type="system",
+        document_id=workflow.document_id,
+        workflow_run_id=workflow.id,
+        metadata={
+            "from_status": from_status,
+            "to_status": to_status,
+            **(metadata or {}),
+        },
+    )
 
 
 def _transition(
@@ -408,3 +425,43 @@ def cancel_workflow(
 
     db.commit()
     return _get_workflow(db, workflow.id)
+
+
+def list_workflows(
+    db: Session,
+    *,
+    status: str | None = None,
+    document_id: int | None = None,
+    limit: int = 20,
+    offset: int = 0,
+) -> tuple[list[WorkflowRun], int]:
+    query = db.query(WorkflowRun)
+
+    if status:
+        query = query.filter(WorkflowRun.status == status)
+
+    if document_id is not None:
+        query = query.filter(
+            WorkflowRun.document_id == document_id
+        )
+
+    total = int(
+        query.with_entities(
+            func.count(WorkflowRun.id)
+        ).scalar()
+        or 0
+    )
+
+    workflows = (
+        query
+        .options(selectinload(WorkflowRun.events))
+        .order_by(
+            WorkflowRun.created_at.desc(),
+            WorkflowRun.id.desc(),
+        )
+        .limit(limit)
+        .offset(offset)
+        .all()
+    )
+
+    return workflows, total

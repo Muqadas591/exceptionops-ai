@@ -13,6 +13,7 @@ from app.services.business_rules import (
     _field_value,
     evaluate_invoice_fields,
 )
+from app.services.audit_service import record_audit_event
 
 
 def _normalize(value: Any) -> str:
@@ -73,6 +74,7 @@ def _is_duplicate(
 def evaluate_document(
     db: Session,
     document_id: int,
+    actor: str = "system",
 ) -> BusinessEvaluation:
     """
     Evaluate the most recent Phase 3 extraction for a document.
@@ -144,6 +146,24 @@ def evaluate_document(
         evaluation.summary = result["summary"]
 
     try:
+        db.flush()
+        record_audit_event(
+            db,
+            event_type="document.evaluation_completed",
+            entity_type="evaluation",
+            entity_id=evaluation.id,
+            description="Business evaluation completed.",
+            actor_type="user" if actor != "system" else "system",
+            actor_id=actor if actor != "system" else None,
+            document_id=document_id,
+            metadata={
+                "evaluation_id": evaluation.id,
+                "decision": evaluation.decision,
+                "risk_score": evaluation.risk_score,
+                "rules_version": evaluation.rules_version,
+                "finding_count": len(evaluation.findings or []),
+            },
+        )
         db.commit()
         db.refresh(evaluation)
     except Exception:

@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
+from app.core.authorization import require_reviewer
 from app.schemas.business_evaluation import BusinessEvaluationRead
 from app.services.business_evaluation import (
     evaluate_document,
@@ -22,11 +23,16 @@ router = APIRouter(
 def evaluate_invoice_document(
     document_id: int,
     db: Session = Depends(get_db),
+    actor: str = Depends(require_reviewer),
 ) -> BusinessEvaluationRead:
     """
     Run Phase 4 business rules on the latest Phase 3 extraction.
     """
-    return evaluate_document(db, document_id)
+    return evaluate_document(
+        db,
+        document_id,
+        actor=actor,
+    )
 
 
 @router.get(

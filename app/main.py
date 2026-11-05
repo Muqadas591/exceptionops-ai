@@ -21,7 +21,7 @@ from app.core.observability import (
     configure_logging,
     request_id_context,
 )
-
+from app.api.routes.audit import router as audit_router
 
 def create_app() -> FastAPI:
     settings = get_settings()
@@ -180,6 +180,10 @@ def create_app() -> FastAPI:
         actions_router,
         prefix=settings.api_v1_prefix,
     )
+    app.include_router(
+    audit_router,
+    prefix=settings.api_v1_prefix,
+)
 
     return app
 

@@ -23,8 +23,13 @@ router = APIRouter(
 def run_extraction(
     document_id: int,
     db: Session = Depends(get_db),
+    actor: str = Depends(require_reviewer),
 ) -> ExtractionResult:
-    return extract_invoice_document(db, document_id)
+    return extract_invoice_document(
+        db,
+        document_id,
+        actor=actor,
+    )
 
 
 @router.get(

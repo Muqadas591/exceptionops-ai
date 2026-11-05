@@ -10,6 +10,7 @@ from app.services.extraction_providers import (
     InvoiceExtractionProvider,
     RuleBasedInvoiceProvider,
 )
+from app.services.audit_service import record_audit_event
 from app.services.text_extraction import (
     TextExtractionError,
     extract_document_text,
@@ -24,6 +25,7 @@ def get_extraction_provider() -> InvoiceExtractionProvider:
 def extract_invoice_document(
     db: Session,
     document_id: int,
+    actor: str = "system",
 ) -> ExtractionResult:
     document = db.get(Document, document_id)
 
@@ -84,6 +86,23 @@ def extract_invoice_document(
         result.extracted_text_length = len(text)
         result.error_message = None
 
+    db.flush()
+    record_audit_event(
+        db,
+        event_type="document.extraction_completed",
+        entity_type="extraction",
+        entity_id=result.id,
+        description="Invoice extraction completed.",
+        actor_type="user" if actor != "system" else "system",
+        actor_id=actor if actor != "system" else None,
+        document_id=document_id,
+        metadata={
+            "extraction_id": result.id,
+            "provider_name": result.provider_name,
+            "status": result.status,
+            "extracted_text_length": result.extracted_text_length,
+        },
+    )
     db.commit()
     db.refresh(result)
     return result

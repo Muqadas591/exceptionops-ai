@@ -8,6 +8,7 @@ from sqlalchemy.pool import StaticPool
 from app import models  # noqa: F401 - register models
 from app.core.authorization import (
     require_action_operator,
+    require_audit_reader,
     require_reviewer,
 )
 from app.db.base import Base
@@ -79,6 +80,9 @@ def client(test_engine, document_storage):
     )
     app.dependency_overrides[require_action_operator] = (
         lambda: "test-operator@example.com"
+    )
+    app.dependency_overrides[require_audit_reader] = (
+        lambda: "test-audit-reader@example.com"
     )
 
     with TestClient(app) as test_client:

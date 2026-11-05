@@ -24,6 +24,10 @@ import ReviewDetailsPage from "./pages/ReviewDetailsPage";
 import "./styles/reviews.css";
 import ActionCenterPage from "./pages/ActionCenterPage";
 import "./styles/actions.css";
+import AuditHistoryPage from "./pages/AuditHistoryPage";
+import WorkflowHistoryPage from "./pages/WorkflowHistoryPage";
+import WorkflowDetailsPage from "./pages/WorkflowDetailsPage";
+import "./styles/operations-history.css";
 
 export default function App() {
   return (
@@ -97,11 +101,7 @@ export default function App() {
                 <RoleGuard
                   allowedRoles={["admin", "reviewer"]}
                 >
-                  <PlaceholderPage
-                    title="Workflow history"
-                    description="Inspect invoice workflow stages and recorded workflow events."
-                    phase="Workflow history implementation"
-                  />
+                  <WorkflowHistoryPage />
                 </RoleGuard>
               }
             />
@@ -112,11 +112,7 @@ export default function App() {
                 <RoleGuard
                   allowedRoles={["admin", "reviewer"]}
                 >
-                  <PlaceholderPage
-                    title="Workflow details"
-                    description="Inspect an individual workflow and its recorded events."
-                    phase="Workflow history implementation"
-                  />
+                  <WorkflowDetailsPage />
                 </RoleGuard>
               }
             />
@@ -127,11 +123,7 @@ export default function App() {
                 <RoleGuard
                   allowedRoles={["admin", "action_operator"]}
                 >
-                  <PlaceholderPage
-                    title="Audit history"
-                    description="Inspect recorded action events and operational traceability."
-                    phase="Audit history implementation"
-                  />
+                  <AuditHistoryPage />
                 </RoleGuard>
               }
             />

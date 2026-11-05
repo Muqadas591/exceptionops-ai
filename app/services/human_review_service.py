@@ -4,7 +4,9 @@ from sqlalchemy.orm import Session, selectinload
 from app.models.human_review import HumanReview
 from app.models.review_comment import ReviewComment
 from app.models.workflow_run import WorkflowRun
+from app.services.audit_service import record_audit_event
 from sqlalchemy import func
+
 
 def _review_query(db: Session):
     return db.query(HumanReview).options(
@@ -31,6 +33,7 @@ def get_review(db: Session, review_id: int) -> HumanReview:
 def get_or_create_review(
     db: Session,
     workflow_run_id: int,
+    actor: str = "system",
 ) -> HumanReview:
     workflow = (
         db.query(WorkflowRun)
@@ -65,6 +68,20 @@ def get_or_create_review(
             status="pending",
         )
         db.add(review)
+        db.flush()
+        record_audit_event(
+            db,
+            event_type="review.created",
+            entity_type="human_review",
+            entity_id=review.id,
+            description="Human review created for workflow.",
+            actor_type="user" if actor != "system" else "system",
+            actor_id=actor if actor != "system" else None,
+            document_id=workflow.document_id,
+            workflow_run_id=workflow.id,
+            review_id=review.id,
+            metadata={"initial_status": "pending"},
+        )
         db.commit()
         db.refresh(review)
 
@@ -168,6 +185,24 @@ def assign_reviewer(
         )
     )
 
+    workflow = db.get(
+        WorkflowRun,
+        review.workflow_run_id,
+    )
+    record_audit_event(
+        db,
+        event_type="review.assigned",
+        entity_type="human_review",
+        entity_id=review.id,
+        description="Human review assigned to a reviewer.",
+        actor_type="user",
+        actor_id=actor,
+        document_id=workflow.document_id if workflow else None,
+        workflow_run_id=review.workflow_run_id,
+        review_id=review.id,
+        metadata={"assigned_to": reviewer},
+    )
+
     db.commit()
     return get_review(db, review.id)
 
@@ -206,6 +241,33 @@ def add_comment(
 
     if comment_type == "correction_request":
         review.status = "correction_requested"
+
+    workflow = db.get(
+        WorkflowRun,
+        review.workflow_run_id,
+    )
+    event_type = (
+        "review.correction_requested"
+        if comment_type == "correction_request"
+        else "review.comment_added"
+    )
+    record_audit_event(
+        db,
+        event_type=event_type,
+        entity_type="human_review",
+        entity_id=review.id,
+        description=(
+            "Correction requested for human review."
+            if comment_type == "correction_request"
+            else "Comment added to human review."
+        ),
+        actor_type="user",
+        actor_id=actor,
+        document_id=workflow.document_id if workflow else None,
+        workflow_run_id=review.workflow_run_id,
+        review_id=review.id,
+        metadata={"comment_type": comment_type},
+    )
 
     db.commit()
     return get_review(db, review.id)
@@ -257,6 +319,27 @@ def decide_review(
             comment_type="decision",
             body=f"{decision}: {note}",
         )
+    )
+
+    workflow = db.get(
+        WorkflowRun,
+        review.workflow_run_id,
+    )
+    record_audit_event(
+        db,
+        event_type=f"review.{decision}",
+        entity_type="human_review",
+        entity_id=review.id,
+        description=f"Human review {decision}.",
+        actor_type="user",
+        actor_id=actor,
+        document_id=workflow.document_id if workflow else None,
+        workflow_run_id=review.workflow_run_id,
+        review_id=review.id,
+        metadata={
+            "decision": decision,
+            "assigned_to": review.assigned_to,
+        },
     )
 
     db.commit()

@@ -29,6 +29,13 @@ def test_review_action_history_route_is_registered(client):
     assert "post" in history_path
 
 
+def test_recovery_queue_returns_a_list(client):
+    response = client.get("/api/v1/actions/recovery/queue")
+
+    assert response.status_code == 200
+    assert isinstance(response.json(), list)
+
+
 def test_review_queue_rejects_unauthenticated_request(
     unauthenticated_client,
 ):

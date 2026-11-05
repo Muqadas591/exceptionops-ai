@@ -14,6 +14,8 @@ from app.services.document_storage import (
 )
 from fastapi import UploadFile
 
+from app.services.audit_service import record_audit_event
+
 
 class DuplicateDocumentError(Exception):
     def __init__(self, document_id: int):
@@ -27,6 +29,7 @@ class DuplicateDocumentError(Exception):
 async def ingest_document(
     db: Session,
     upload: UploadFile,
+    actor: str = "system",
 ) -> Document:
     """Store a validated file and persist its metadata."""
     settings = get_settings()
@@ -60,6 +63,22 @@ async def ingest_document(
         )
 
         db.add(document)
+        db.flush()
+        record_audit_event(
+            db,
+            event_type="document.uploaded",
+            entity_type="document",
+            entity_id=document.id,
+            description="Invoice document uploaded successfully.",
+            actor_type="user" if actor != "system" else "system",
+            actor_id=actor if actor != "system" else None,
+            document_id=document.id,
+            metadata={
+                "filename": document.original_filename,
+                "extension": document.extension,
+                "file_size_bytes": document.file_size_bytes,
+            },
+        )
         db.commit()
         db.refresh(document)
         return document

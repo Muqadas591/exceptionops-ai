@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Header
+from fastapi import APIRouter, Depends, Header, Query, Response
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
@@ -9,6 +9,7 @@ from app.services.workflow_service import (
     create_workflow,
     get_latest_document_workflow,
     get_workflow,
+    list_workflows,
     resolve_workflow,
     retry_workflow,
 )
@@ -48,6 +49,47 @@ def read_document_workflow(
     db: Session = Depends(get_db),
 ):
     return get_latest_document_workflow(db, document_id)
+
+
+@router.get(
+    "/workflows",
+    response_model=list[WorkflowRead],
+)
+def read_workflows(
+    response: Response,
+    status: str | None = Query(
+        default=None,
+        max_length=30,
+    ),
+    document_id: int | None = Query(
+        default=None,
+        ge=1,
+    ),
+    limit: int = Query(
+        default=20,
+        ge=1,
+        le=100,
+    ),
+    offset: int = Query(
+        default=0,
+        ge=0,
+    ),
+    db: Session = Depends(get_db),
+):
+    workflows, total = list_workflows(
+        db,
+        status=status,
+        document_id=document_id,
+        limit=limit,
+        offset=offset,
+    )
+    response.headers["X-Total-Count"] = str(total)
+    response.headers["X-Page-Limit"] = str(limit)
+    response.headers["X-Page-Offset"] = str(offset)
+    response.headers["X-Has-More"] = str(
+        offset + len(workflows) < total
+    ).lower()
+    return workflows
 
 
 @router.get(

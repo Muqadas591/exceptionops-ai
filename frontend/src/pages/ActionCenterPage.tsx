@@ -1,4 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
+import type { FormEvent } from "react";
 import { useSearchParams } from "react-router-dom";
 import ActionStatusBadge from "../components/actions/ActionStatusBadge";
 import { actionsApi } from "../api/actionApi";
@@ -88,7 +93,7 @@ export default function ActionCenterPage() {
   }, [refreshAll]);
 
   async function handleCreateAction(
-    event: React.FormEvent<HTMLFormElement>,
+    event: FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault();
     setError("");
@@ -169,7 +174,7 @@ export default function ActionCenterPage() {
   }
 
   async function handleReconcile(
-    event: React.FormEvent<HTMLFormElement>,
+    event: FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault();
 
@@ -335,8 +340,8 @@ export default function ActionCenterPage() {
           <div>
             <h2>Recovery queue</h2>
             <p>
-              Pending, in-progress, and uncertain executions that need
-              operator attention.
+              Pending, in-progress, uncertain, and failed executions that
+              need operator attention.
             </p>
           </div>
           <span className="action-count">{recoveryItems.length}</span>
@@ -384,8 +389,7 @@ export default function ActionCenterPage() {
                           </button>
                         )}
 
-                        {(item.status === "uncertain" ||
-                          item.status === "in_progress") && (
+                        {item.status === "uncertain" && (
                           <button
                             type="button"
                             className="button button-small"
@@ -399,6 +403,12 @@ export default function ActionCenterPage() {
                           >
                             Reconcile
                           </button>
+                        )}
+
+                        {item.status === "in_progress" && (
+                          <span>
+                            Execution is in progress. Do not reconcile yet.
+                          </span>
                         )}
                       </div>
 
@@ -500,6 +510,7 @@ export default function ActionCenterPage() {
                   <th>Executed by</th>
                   <th>Created</th>
                   <th>Last error</th>
+                  <th>Controls</th>
                 </tr>
               </thead>
               <tbody>
@@ -514,6 +525,21 @@ export default function ActionCenterPage() {
                     <td>{item.executed_by}</td>
                     <td>{formatDate(item.created_at)}</td>
                     <td>{item.last_error ?? "—"}</td>
+                    <td>
+                      {item.status === "failed" && (
+                        <button
+                          type="button"
+                          className="button button-small"
+                          onClick={() => void handleRetry(item.id)}
+                        >
+                          Retry
+                        </button>
+                      )}
+
+                      {item.status === "uncertain" && (
+                        <span>Requires reconciliation</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

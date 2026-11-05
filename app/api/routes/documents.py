@@ -43,9 +43,14 @@ router = APIRouter(
 async def upload_document(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
+    actor: str = Depends(require_reviewer),
 ) -> Document:
     try:
-        return await ingest_document(db, file)
+        return await ingest_document(
+            db,
+            file,
+            actor=actor,
+        )
     except UploadTooLargeError as exc:
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,

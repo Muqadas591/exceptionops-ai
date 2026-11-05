@@ -11,12 +11,13 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models.action_execution import ActionExecution
-from app.models.audit_event import AuditEvent
 from app.models.human_review import HumanReview
+from app.models.workflow_run import WorkflowRun
 from app.schemas.action_execution import (
     ActionReconciliationRequest,
     ActionRequest,
 )
+from app.services.audit_service import record_audit_event
 from app.services.action_connectors import execute_connector
 
 
@@ -133,16 +134,36 @@ def _record_audit(
     description: str,
     metadata: dict[str, Any] | None = None,
 ) -> None:
-    db.add(
-        AuditEvent(
-            event_type=event_type,
-            entity_type="action_execution",
-            entity_id=str(action.id),
-            actor_type="operator",
-            actor_id=actor,
-            description=description,
-            event_metadata=metadata or {},
+    review = (
+        db.query(HumanReview)
+        .filter(HumanReview.id == action.review_id)
+        .first()
+    )
+    workflow = None
+    if review is not None:
+        workflow = (
+            db.query(WorkflowRun)
+            .filter(
+                WorkflowRun.id == review.workflow_run_id
+            )
+            .first()
         )
+
+    record_audit_event(
+        db,
+        event_type=event_type,
+        entity_type="action_execution",
+        entity_id=action.id,
+        description=description,
+        actor_type="operator",
+        actor_id=actor,
+        document_id=workflow.document_id if workflow else None,
+        workflow_run_id=(
+            review.workflow_run_id if review else None
+        ),
+        review_id=action.review_id,
+        action_id=action.id,
+        metadata=metadata,
     )
 
 
@@ -464,15 +485,22 @@ def list_recovery_actions(
         db.query(ActionExecution)
         .filter(
             ActionExecution.status.in_(
-                ["pending", "in_progress", "uncertain"]
+                [
+                    "pending",
+                    "in_progress",
+                    "uncertain",
+                    "failed",
+                ]
             )
         )
-        .order_by(ActionExecution.updated_at.asc())
+        .order_by(
+            ActionExecution.updated_at.asc(),
+            ActionExecution.id.asc(),
+        )
         .limit(limit)
         .offset(offset)
         .all()
     )
-
 
 def reconcile_action(
     db: Session,
@@ -482,7 +510,7 @@ def reconcile_action(
 ) -> ActionExecution:
     action = _get_action(db, action_id, lock=True)
 
-    if action.status not in {"in_progress", "uncertain"}:
+    if action.status != "uncertain":
         raise HTTPException(
             status_code=409,
             detail=(

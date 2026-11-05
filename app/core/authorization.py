@@ -20,3 +20,10 @@ def require_action_operator(
 ) -> str:
     """Allow administrators and action operators."""
     return user.email
+def require_audit_reader(
+    user: User = Depends(
+        require_roles("admin", "action_operator")
+    ),
+) -> str:
+    """Allow administrators and action operators to inspect audit data."""
+    return user.email
