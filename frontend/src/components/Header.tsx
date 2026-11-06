@@ -1,14 +1,8 @@
-import type { AuthTokens } from "../types";
+import { useAuth } from "../auth/AuthContext";
 
-interface HeaderProps {
-  tokens: AuthTokens;
-  onTokensChange: (tokens: AuthTokens) => void;
-}
+export default function Header() {
+  const { user, logout } = useAuth();
 
-export default function Header({
-  tokens,
-  onTokensChange,
-}: HeaderProps) {
   return (
     <header className="app-header">
       <div className="brand">
@@ -20,37 +14,12 @@ export default function Header({
       </div>
 
       <div className="token-controls">
-        <label>
-          Reviewer token
-          <input
-            type="password"
-            autoComplete="off"
-            placeholder="Reviewer token"
-            value={tokens.reviewerToken}
-            onChange={(event) =>
-              onTokensChange({
-                ...tokens,
-                reviewerToken: event.target.value,
-              })
-            }
-          />
-        </label>
-
-        <label>
-          Action token
-          <input
-            type="password"
-            autoComplete="off"
-            placeholder="Action token"
-            value={tokens.actionToken}
-            onChange={(event) =>
-              onTokensChange({
-                ...tokens,
-                actionToken: event.target.value,
-              })
-            }
-          />
-        </label>
+        <span>
+          {user ? `${user.email} · ${user.role.replaceAll("_", " ")}` : ""}
+        </span>
+        <button className="button button-secondary" onClick={logout}>
+          Sign out
+        </button>
       </div>
     </header>
   );

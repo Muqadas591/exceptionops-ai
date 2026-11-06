@@ -1,5 +1,7 @@
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
+from app.models.action_execution import ActionExecution
+from app.models.audit_event import AuditEvent
 from app.models.document import Document
 from app.models.human_review import HumanReview
 from app.models.workflow_run import WorkflowRun
@@ -50,6 +52,36 @@ def seed_approved_review(test_engine) -> int:
         db.commit()
 
         return review.id
+
+
+def seed_action_execution(
+    test_engine,
+    review_id: int,
+    *,
+    status: str,
+) -> int:
+    TestingSession = sessionmaker(
+        bind=test_engine,
+        autoflush=False,
+        expire_on_commit=False,
+    )
+
+    with TestingSession() as db:
+        action = ActionExecution(
+            review_id=review_id,
+            action_type="accounting_simulation",
+            status=status,
+            attempt_count=1,
+            idempotency_key=f"test-action-{status}",
+            request_fingerprint="0" * 64,
+            request_payload={},
+            result_payload=None,
+            last_error="Synthetic failure." if status == "failed" else None,
+            executed_by="synthetic-operator",
+        )
+        db.add(action)
+        db.commit()
+        return action.id
 
 
 def action_headers(key: str) -> dict[str, str]:
@@ -114,6 +146,73 @@ def test_repeated_request_returns_existing_action(
 
     # The connector must not execute a second time.
     assert calls["count"] == 1
+
+    with Session(test_engine) as db:
+        audit_events = (
+            db.query(AuditEvent)
+            .filter(AuditEvent.action_id == first.json()["id"])
+            .all()
+        )
+
+    assert {
+        event.event_type for event in audit_events
+    } >= {
+        "action.created",
+        "action.execution_started",
+        "action.execution_succeeded",
+    }
+    assert all(
+        event.document_id is not None
+        and event.workflow_run_id is not None
+        and event.review_id == review_id
+        for event in audit_events
+    )
+
+
+def test_review_action_history_is_newest_first_and_paginated(
+    client,
+    test_engine,
+    monkeypatch,
+):
+    monkeypatch.setenv(
+        "EXCEPTIONOPS_ACTION_TOKEN",
+        ACTION_TOKEN,
+    )
+
+    review_id = seed_approved_review(test_engine)
+    monkeypatch.setattr(
+        action_service,
+        "execute_connector",
+        lambda action_type, payload: ConnectorOutcome(
+            success=True,
+            result={"outcome": "completed"},
+        ),
+    )
+
+    created_ids = []
+    for index in range(2):
+        response = client.post(
+            f"/api/v1/reviews/{review_id}/actions",
+            headers=action_headers(f"stage84-history-{index:03d}"),
+            json={"action_type": "accounting_simulation"},
+        )
+        assert response.status_code == 200
+        created_ids.append(response.json()["id"])
+
+    newest = client.get(
+        f"/api/v1/reviews/{review_id}/actions?limit=1",
+        headers={"X-Action-Token": ACTION_TOKEN},
+    )
+    older = client.get(
+        f"/api/v1/reviews/{review_id}/actions?limit=1&offset=1",
+        headers={"X-Action-Token": ACTION_TOKEN},
+    )
+
+    assert newest.status_code == 200
+    assert older.status_code == 200
+    assert [newest.json()[0]["id"], older.json()[0]["id"]] == list(
+        reversed(created_ids)
+    )
 
 
 def test_same_key_with_different_payload_is_rejected(
@@ -200,6 +299,16 @@ def test_failed_action_can_be_retried(
     assert retried.json()["attempt_count"] == 2
     assert calls["count"] == 2
 
+    with Session(test_engine) as db:
+        event_types = {
+            event.event_type
+            for event in db.query(AuditEvent)
+            .filter(AuditEvent.action_id == action_id)
+            .all()
+        }
+
+    assert "action.retry_requested" in event_types
+
 
 def test_uncertain_action_is_not_blindly_retried(
     client,
@@ -281,6 +390,83 @@ def test_recovery_queue_contains_uncertain_action(
         and item["status"] == "uncertain"
         for item in response.json()
     )
+
+
+def test_recovery_service_includes_failed_actions(
+    test_engine,
+):
+    review_id = seed_approved_review(test_engine)
+    action_id = seed_action_execution(
+        test_engine,
+        review_id,
+        status="failed",
+    )
+    TestingSession = sessionmaker(
+        bind=test_engine,
+        autoflush=False,
+        expire_on_commit=False,
+    )
+
+    with TestingSession() as db:
+        actions = action_service.list_recovery_actions(db)
+
+    assert action_id in [action.id for action in actions]
+
+
+def test_in_progress_action_cannot_be_reconciled(
+    client,
+    test_engine,
+):
+    review_id = seed_approved_review(test_engine)
+    action_id = seed_action_execution(
+        test_engine,
+        review_id,
+        status="in_progress",
+    )
+
+    response = client.post(
+        f"/api/v1/actions/{action_id}/reconcile",
+        json={
+            "outcome": "confirmed_succeeded",
+            "note": "Synthetic test reconciliation note.",
+        },
+    )
+
+    assert response.status_code == 409
+
+
+def test_uncertain_action_can_be_reconciled(
+    client,
+    test_engine,
+):
+    review_id = seed_approved_review(test_engine)
+    action_id = seed_action_execution(
+        test_engine,
+        review_id,
+        status="uncertain",
+    )
+
+    response = client.post(
+        f"/api/v1/actions/{action_id}/reconcile",
+        json={
+            "outcome": "confirmed_succeeded",
+            "note": "Synthetic test reconciliation note.",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["id"] == action_id
+    assert response.json()["status"] == "succeeded"
+
+    with Session(test_engine) as db:
+        event_types = {
+            event.event_type
+            for event in db.query(AuditEvent)
+            .filter(AuditEvent.action_id == action_id)
+            .all()
+        }
+
+    assert "action.reconciled" in event_types
 
 
 def test_reconciliation_can_mark_action_not_executed(

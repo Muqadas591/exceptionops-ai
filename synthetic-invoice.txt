@@ -1,0 +1,6 @@
+﻿Supplier: North Star Supplies
+Invoice Number: INV-2026-001
+Invoice Date: 2026-10-10
+Due Date: 2026-10-30
+Currency: PKR
+Total: 2500.00

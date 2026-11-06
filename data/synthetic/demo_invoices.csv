@@ -1,0 +1,7 @@
+demo_record_id,invoice_number,supplier_reference,supplier_name,purchase_order_number,purchase_order_supplier_name,invoice_amount,purchase_order_amount,currency,scenario,expected_outcome,is_synthetic
+DEMO-0001,SYN-INV-1001,SUP-DEMO-001,Northstar Office Supplies,SYN-PO-501,Northstar Office Supplies,1250.00,1250.00,USD,matched_invoice,eligible_for_standard_review,true
+DEMO-0002,SYN-INV-1001,SUP-DEMO-001,Northstar Office Supplies,SYN-PO-501,Northstar Office Supplies,1250.00,1250.00,USD,duplicate_candidate,duplicate_check_required,true
+DEMO-0003,SYN-INV-1002,SUP-DEMO-002,Cedar Ridge Components,SYN-PO-502,Cedar Ridge Components,1840.00,1600.00,USD,amount_mismatch,human_review_required,true
+DEMO-0004,SYN-INV-1003,SUP-DEMO-003,Bluewater Logistics,SYN-PO-503,Bluewater Logistics,invalid,780.00,USD,invalid_amount,validation_failure,true
+DEMO-0005,SYN-INV-1004,SUP-DEMO-004,Summit Industrial Goods,,Summit Industrial Goods,950.00,,USD,missing_purchase_order,human_review_required,true
+DEMO-0006,SYN-INV-1005,SUP-DEMO-005,Meadowbrook Packaging,SYN-PO-505,Meadowbrook Packaging Ltd.,2340.00,2340.00,USD,supplier_mismatch,human_review_required,true

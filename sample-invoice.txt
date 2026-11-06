@@ -1,0 +1,2 @@
+﻿Invoice number: INV-TEST-001
+Total: 2500.00

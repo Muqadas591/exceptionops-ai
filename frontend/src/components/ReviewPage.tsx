@@ -2,21 +2,17 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { api } from "../api";
+import { useAuth } from "../auth/AuthContext";
 import StatusBadge from "./StatusBadge";
 
 import type {
   ActionExecution,
   ActionType,
-  AuthTokens,
   BusinessEvaluation,
   ExtractionResult,
   HumanReview,
   WorkflowRun,
 } from "../types";
-
-interface ReviewPageProps {
-  tokens: AuthTokens;
-}
 
 function displayField(value: unknown): string {
   if (
@@ -38,8 +34,9 @@ function displayField(value: unknown): string {
   return String(value);
 }
 
-export default function ReviewPage({ tokens }: ReviewPageProps) {
+export default function ReviewPage() {
   const { reviewId } = useParams<{ reviewId: string }>();
+  const { user } = useAuth();
 
   const [review, setReview] = useState<HumanReview | null>(null);
   const [workflow, setWorkflow] = useState<WorkflowRun | null>(null);
@@ -73,34 +70,25 @@ export default function ReviewPage({ tokens }: ReviewPageProps) {
       return;
     }
 
-    if (!tokens.reviewerToken.trim()) {
-      setError("Enter your reviewer token in the header.");
-      return;
-    }
-
     setLoading(true);
     setError("");
 
     try {
-      const currentReview = await api.getReview(
-        numericReviewId,
-        tokens,
-      );
+      const currentReview = await api.getReview(numericReviewId);
 
       setReview(currentReview);
       setReviewer(currentReview.assigned_to || "");
 
       const currentWorkflow = await api.getWorkflow(
         currentReview.workflow_run_id,
-        tokens,
       );
 
       setWorkflow(currentWorkflow);
 
       const [extractionResult, evaluationResult] =
         await Promise.allSettled([
-          api.getExtraction(currentWorkflow.document_id, tokens),
-          api.getEvaluation(currentWorkflow.document_id, tokens),
+          api.getExtraction(currentWorkflow.document_id),
+          api.getEvaluation(currentWorkflow.document_id),
         ]);
 
       setExtraction(
@@ -121,7 +109,7 @@ export default function ReviewPage({ tokens }: ReviewPageProps) {
     } finally {
       setLoading(false);
     }
-  }, [numericReviewId, tokens]);
+  }, [numericReviewId]);
 
   useEffect(() => {
     void loadReview();
@@ -157,7 +145,7 @@ export default function ReviewPage({ tokens }: ReviewPageProps) {
     if (!review) return;
 
     await runOperation(
-      () => api.assignReviewer(review.id, reviewer, tokens),
+      () => api.assignReviewer(review.id, reviewer),
       "Reviewer assignment saved.",
     );
   }
@@ -170,7 +158,7 @@ export default function ReviewPage({ tokens }: ReviewPageProps) {
     if (!review) return;
 
     await runOperation(
-      () => api.addComment(review.id, comment, tokens),
+      () => api.addComment(review.id, comment),
       "Comment added.",
     );
 
@@ -185,8 +173,7 @@ export default function ReviewPage({ tokens }: ReviewPageProps) {
     if (!review) return;
 
     await runOperation(
-      () =>
-        api.requestCorrection(review.id, correction, tokens),
+      () => api.requestCorrection(review.id, correction),
       "Correction request recorded.",
     );
 
@@ -206,8 +193,8 @@ export default function ReviewPage({ tokens }: ReviewPageProps) {
     await runOperation(
       () =>
         decision === "approve"
-          ? api.approveReview(review.id, decisionNote, tokens)
-          : api.rejectReview(review.id, decisionNote, tokens),
+          ? api.approveReview(review.id, decisionNote)
+          : api.rejectReview(review.id, decisionNote),
       decision === "approve"
         ? "Review approved."
         : "Review rejected.",
@@ -241,7 +228,6 @@ export default function ReviewPage({ tokens }: ReviewPageProps) {
       const result = await api.executeAction(
         review.id,
         payload,
-        tokens,
       );
 
       setAction(result);
@@ -267,7 +253,7 @@ export default function ReviewPage({ tokens }: ReviewPageProps) {
     setNotice("");
 
     try {
-      const result = await api.retryAction(action.id, tokens);
+      const result = await api.retryAction(action.id);
       setAction(result);
       setNotice(
         result.status === "succeeded"
@@ -290,7 +276,7 @@ export default function ReviewPage({ tokens }: ReviewPageProps) {
     setError("");
 
     try {
-      const result = await api.getAction(action.id, tokens);
+      const result = await api.getAction(action.id);
       setAction(result);
       setNotice("Action outcome refreshed.");
     } catch (err) {
@@ -330,6 +316,8 @@ export default function ReviewPage({ tokens }: ReviewPageProps) {
 
   const canDecide =
     Boolean(review.assigned_to) && !finalDecision;
+  const canExecuteAction =
+    user?.role === "admin" || user?.role === "action_operator";
 
   return (
     <main className="page">
@@ -431,11 +419,11 @@ export default function ReviewPage({ tokens }: ReviewPageProps) {
                 {evaluation.findings.length ? (
                   <ul className="finding-list">
                     {evaluation.findings.map((finding, index) => (
-                      <li key={`${finding.code || finding.rule || "finding"}-${index}`}>
-                        <strong>
-                          {finding.code || finding.rule || "Rule finding"}
-                        </strong>
-                        <p>{finding.message || JSON.stringify(finding)}</p>
+                      <li key={`${finding.rule_code || "finding"}-${index}`}>
+                        <strong>{finding.rule_code || "Rule finding"}</strong>
+                        <p>
+                          {finding.message || JSON.stringify(finding)}
+                        </p>
                         {finding.severity && (
                           <span className="muted">
                             Severity: {finding.severity}
@@ -697,7 +685,7 @@ export default function ReviewPage({ tokens }: ReviewPageProps) {
                 <button
                   className="button button-primary"
                   type="submit"
-                  disabled={busy || !tokens.actionToken.trim()}
+                  disabled={busy || !canExecuteAction}
                 >
                   Execute selected action
                 </button>

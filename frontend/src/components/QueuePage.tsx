@@ -3,13 +3,9 @@ import { useNavigate } from "react-router-dom";
 
 import { api } from "../api";
 import StatusBadge from "./StatusBadge";
-import type { AuthTokens, HumanReview } from "../types";
+import type { HumanReview } from "../types";
 
-interface QueuePageProps {
-  tokens: AuthTokens;
-}
-
-export default function QueuePage({ tokens }: QueuePageProps) {
+export default function QueuePage() {
   const navigate = useNavigate();
 
   const [reviews, setReviews] = useState<HumanReview[]>([]);
@@ -21,18 +17,11 @@ export default function QueuePage({ tokens }: QueuePageProps) {
   const [notice, setNotice] = useState("");
 
   const loadQueue = useCallback(async () => {
-    if (!tokens.reviewerToken.trim()) {
-      setError("Enter your reviewer token in the header.");
-      setReviews([]);
-      return;
-    }
-
     setLoading(true);
     setError("");
 
     try {
       const data = await api.getQueue(
-        tokens,
         status || undefined,
         assignedTo.trim() || undefined,
       );
@@ -45,7 +34,7 @@ export default function QueuePage({ tokens }: QueuePageProps) {
     } finally {
       setLoading(false);
     }
-  }, [tokens, status, assignedTo]);
+  }, [status, assignedTo]);
 
   useEffect(() => {
     void loadQueue();
@@ -66,7 +55,7 @@ export default function QueuePage({ tokens }: QueuePageProps) {
     }
 
     try {
-      const review = await api.createReview(parsedId, tokens);
+      const review = await api.createReview(parsedId);
       setNotice(`Review #${review.id} is ready.`);
       navigate(`/reviews/${review.id}`);
     } catch (err) {

@@ -92,7 +92,11 @@ def create_workflow_review(
     db: Session = Depends(get_db),
     actor: str = Depends(require_reviewer),
 ):
-    return get_or_create_review(db, workflow_id)
+    return get_or_create_review(
+        db,
+        workflow_id,
+        actor=actor,
+    )
 
 
 @router.get(

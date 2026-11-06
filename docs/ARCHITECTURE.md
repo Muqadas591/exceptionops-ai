@@ -153,3 +153,27 @@ Provider responses are untrusted. Validate them against a strict schema and run 
 ## 8. Deployment shape
 
 Initial target: modular backend API + PostgreSQL + frontend. Use Docker for reproducible packaging when implementation begins. Background workers or a durable workflow engine may be introduced after the simple workflow requirements and failure modes are tested; do not add infrastructure without a need.
+
+# ExceptionOps AI Architecture
+
+## Overview
+
+ExceptionOps AI is a business-automation project focused on invoice processing,
+exception identification, human review, and controlled actions.
+
+The application separates document storage, database records, API logic,
+business processing, and user-interface responsibilities.
+
+## High-level workflow
+
+```mermaid
+flowchart TD
+    A[Synthetic Invoice] --> B[Document Ingestion]
+    B --> C[Document Storage]
+    B --> D[Database Metadata]
+    D --> E[Extraction]
+    E --> F[Business Validation]
+    F --> G[Exception Identification]
+    G --> H[Human Review]
+    H --> I[Controlled Action]
+    I --> J[Audit Record]

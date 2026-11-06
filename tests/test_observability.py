@@ -2,6 +2,7 @@ import uuid
 
 from sqlalchemy.orm import Session
 
+from app.models.audit_event import AuditEvent
 from app.models.document import Document
 from app.models.human_review import HumanReview
 from app.models.workflow_run import WorkflowRun
@@ -199,3 +200,146 @@ def test_review_queue_paginates_records(
     }
 
     assert first_ids.isdisjoint(second_ids)
+
+
+def test_document_workflow_and_review_events_are_audited(
+    client,
+    test_engine,
+):
+    upload = client.post(
+        "/api/v1/documents",
+        files={
+            "file": (
+                "audited-invoice.txt",
+                (
+                    "Supplier: North Star Supplies\n"
+                    "Invoice Number: AUDIT-2026-001\n"
+                    "Invoice Date: 2026-10-10\n"
+                    "Due Date: 2026-10-30\n"
+                    "Currency: PKR\n"
+                    "Total: 2500.00\n"
+                ).encode("utf-8"),
+                "text/plain",
+            )
+        },
+    )
+    assert upload.status_code == 201
+    document_id = upload.json()["id"]
+
+    extraction = client.post(
+        f"/api/v1/documents/{document_id}/extract"
+    )
+    evaluation = client.post(
+        f"/api/v1/documents/{document_id}/evaluate"
+    )
+    assert extraction.status_code == 200
+    assert evaluation.status_code == 200
+
+    workflow_response = client.post(
+        f"/api/v1/documents/{document_id}/workflow"
+    )
+    assert workflow_response.status_code == 200
+    workflow_id = workflow_response.json()["id"]
+
+    advanced = client.post(
+        f"/api/v1/workflows/{workflow_id}/advance"
+    )
+    assert advanced.status_code == 200
+
+    review_response = client.post(
+        f"/api/v1/workflows/{workflow_id}/review"
+    )
+    assert review_response.status_code == 200
+    review_id = review_response.json()["id"]
+
+    assigned = client.post(
+        f"/api/v1/reviews/{review_id}/assign",
+        json={"reviewer": "audit-reviewer"},
+    )
+    assert assigned.status_code == 200
+
+    correction = client.post(
+        f"/api/v1/reviews/{review_id}/request-correction",
+        json={"instructions": "Please verify the invoice total."},
+    )
+    assert correction.status_code == 200
+
+    private_comment = "private comment content should not be copied"
+    commented = client.post(
+        f"/api/v1/reviews/{review_id}/comments",
+        json={"body": private_comment},
+    )
+    assert commented.status_code == 200
+
+    decided = client.post(
+        f"/api/v1/reviews/{review_id}/approve",
+        json={"note": "Audit test approval."},
+    )
+    assert decided.status_code == 200
+
+    second_workflow = client.post(
+        f"/api/v1/documents/{document_id}/workflow",
+        headers={"Idempotency-Key": "audit-rejection-workflow"},
+    )
+    assert second_workflow.status_code == 200
+    second_workflow_id = second_workflow.json()["id"]
+
+    second_advance = client.post(
+        f"/api/v1/workflows/{second_workflow_id}/advance"
+    )
+    assert second_advance.status_code == 200
+
+    second_review = client.post(
+        f"/api/v1/workflows/{second_workflow_id}/review"
+    )
+    assert second_review.status_code == 200
+    second_review_id = second_review.json()["id"]
+
+    second_assignment = client.post(
+        f"/api/v1/reviews/{second_review_id}/assign",
+        json={"reviewer": "audit-reviewer"},
+    )
+    assert second_assignment.status_code == 200
+
+    rejection = client.post(
+        f"/api/v1/reviews/{second_review_id}/reject",
+        json={"note": "Audit test rejection."},
+    )
+    assert rejection.status_code == 200
+
+    with Session(test_engine) as db:
+        events = (
+            db.query(AuditEvent)
+            .filter(
+                AuditEvent.document_id == document_id,
+            )
+            .all()
+        )
+
+    event_types = {event.event_type for event in events}
+    assert {
+        "document.uploaded",
+        "document.extraction_completed",
+        "document.evaluation_completed",
+        "workflow.workflow_created",
+        "workflow.extraction_detected",
+        "workflow.evaluation_completed",
+        "review.created",
+        "review.assigned",
+        "review.correction_requested",
+        "review.comment_added",
+        "review.approved",
+        "review.rejected",
+    }.issubset(event_types)
+
+    review_events = [
+        event
+        for event in events
+        if event.review_id == review_id
+    ]
+    assert review_events
+    assert all(event.workflow_run_id == workflow_id for event in review_events)
+    assert all(
+        private_comment not in str(event.event_metadata)
+        for event in review_events
+    )

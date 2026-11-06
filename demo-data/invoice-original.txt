@@ -1,0 +1,10 @@
+﻿Supplier: Northstar Office Supplies Ltd.
+Invoice Number: DEMO-INV-2026-900
+Invoice Date: 2026-10-20
+Due Date: 2026-11-18
+Currency: PKR
+Subtotal: 90000.00
+Tax: 9000.00
+Total: 99000.00
+Description: Office stationery and printer paper
+Purchase Order: DEMO-PO-900
