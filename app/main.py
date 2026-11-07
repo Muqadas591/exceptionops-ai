@@ -114,11 +114,6 @@ def create_app() -> FastAPI:
             "Content-Type",
             "X-Request-ID",
             "Idempotency-Key",
-
-            # Temporary compatibility with the existing Stage 6 frontend.
-            # Remove these after the Stage 8.1 frontend migration.
-            "X-Reviewer-Token",
-            "X-Action-Token",
         ],
         expose_headers=[
      "X-Request-ID",
