@@ -14,5 +14,11 @@ class DocumentRead(BaseModel):
     file_size_bytes: int = Field(ge=1)
     checksum_sha256: str
     status: str
+
+    content_status: str
+    content_deleted_at: datetime | None
+    content_deletion_reason: str | None
+    content_deleted_by: str | None
+
     created_at: datetime
     updated_at: datetime

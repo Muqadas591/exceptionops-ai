@@ -44,6 +44,24 @@ class Settings(BaseSettings):
     )
     document_storage_dir: str = ".local_storage/documents"
 
+    # Retention policies.
+    # Zero means no age-based document eligibility is configured.
+    # It does NOT prevent an explicitly authorized admin purge.
+    document_content_retention_days: int = Field(
+        default=0,
+        ge=0,
+        le=36500,
+    )
+
+    # Zero means audit events are retained indefinitely.
+    # A positive value is a review threshold only. Audit events are
+    # never automatically deleted by this application.
+    audit_event_retention_days: int = Field(
+        default=0,
+        ge=0,
+        le=36500,
+    )
+
     # Authentication.
     auth_secret_key: str = ""
     access_token_expire_minutes: int = Field(

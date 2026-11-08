@@ -187,6 +187,9 @@ def test_protected_endpoints_reject_invalid_token(
         ("action_operator", "/api/v1/reviews/queue", 403),
         ("action_operator", "/api/v1/actions/recovery/queue", 200),
         ("action_operator", "/api/v1/audit/events", 200),
+        ("admin", "/api/v1/retention/summary", 200),
+        ("reviewer", "/api/v1/retention/summary", 403),
+        ("action_operator", "/api/v1/retention/summary", 403),
     ],
 )
 def test_role_permission_matrix(

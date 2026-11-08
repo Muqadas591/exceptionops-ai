@@ -8,11 +8,13 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from app.api.routes.actions import router as actions_router
+from app.api.routes.audit import router as audit_router
 from app.api.routes.auth import router as auth_router
 from app.api.routes.documents import router as documents_router
 from app.api.routes.evaluations import router as evaluations_router
 from app.api.routes.extractions import router as extractions_router
 from app.api.routes.health import router as health_router
+from app.api.routes.retention import router as retention_router
 from app.api.routes.reviews import router as reviews_router
 from app.api.routes.workflows import router as workflows_router
 from app.core.config import get_settings
@@ -21,12 +23,11 @@ from app.core.observability import (
     configure_logging,
     request_id_context,
 )
-from app.api.routes.audit import router as audit_router
+
 
 def create_app() -> FastAPI:
     settings = get_settings()
 
-    # Configure application-wide logging.
     configure_logging(environment=settings.app_env)
 
     docs_enabled = settings.docs_enabled
@@ -45,7 +46,6 @@ def create_app() -> FastAPI:
         openapi_url="/openapi.json" if docs_enabled else None,
     )
 
-    # Handle request validation errors without exposing submitted values.
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(
         request,
@@ -89,15 +89,12 @@ def create_app() -> FastAPI:
             },
         )
 
-    # Reject requests with unexpected Host headers in production.
-    # Development retains the usual local hostnames.
     if settings.is_production:
         app.add_middleware(
             TrustedHostMiddleware,
             allowed_hosts=settings.allowed_hosts_list,
         )
 
-    # CORS configuration.
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins_list,
@@ -116,15 +113,14 @@ def create_app() -> FastAPI:
             "Idempotency-Key",
         ],
         expose_headers=[
-     "X-Request-ID",
-    "X-Total-Count",
-    "X-Page-Limit",
-    "X-Page-Offset",
-    "X-Has-More",
-    ],
+            "X-Request-ID",
+            "X-Total-Count",
+            "X-Page-Limit",
+            "X-Page-Offset",
+            "X-Has-More",
+        ],
     )
 
-    # Register request context middleware after CORS middleware.
     app.add_middleware(RequestContextMiddleware)
 
     @app.get("/", tags=["Root"])
@@ -135,7 +131,6 @@ def create_app() -> FastAPI:
             "docs": "/docs" if docs_enabled else None,
         }
 
-    # Register existing API routers using the configured API prefix.
     app.include_router(
         health_router,
         prefix=settings.api_v1_prefix,
@@ -175,10 +170,16 @@ def create_app() -> FastAPI:
         actions_router,
         prefix=settings.api_v1_prefix,
     )
+
     app.include_router(
-    audit_router,
-    prefix=settings.api_v1_prefix,
-)
+        audit_router,
+        prefix=settings.api_v1_prefix,
+    )
+
+    app.include_router(
+        retention_router,
+        prefix=settings.api_v1_prefix,
+    )
 
     return app
 

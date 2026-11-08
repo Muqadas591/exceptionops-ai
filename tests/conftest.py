@@ -8,6 +8,7 @@ from sqlalchemy.pool import StaticPool
 from app import models  # noqa: F401 - register models
 from app.core.authorization import (
     require_action_operator,
+    require_admin,
     require_audit_reader,
     require_reviewer,
 )
@@ -15,6 +16,7 @@ from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
 import app.services.document_ingestion as ingestion_service
+import app.services.retention_service as retention_service
 
 
 @pytest.fixture
@@ -45,8 +47,15 @@ def document_storage(tmp_path, monkeypatch):
         "document_storage_dir",
         str(tmp_path),
     )
+
     monkeypatch.setattr(
         ingestion_service,
+        "get_settings",
+        lambda: settings,
+    )
+
+    monkeypatch.setattr(
+        retention_service,
         "get_settings",
         lambda: settings,
     )
@@ -74,13 +83,18 @@ def client(test_engine, document_storage):
     app.dependency_overrides[get_db] = override_get_db
 
     # Test-only authorization overrides.
-    # Production authentication remains unchanged.
+    app.dependency_overrides[require_admin] = (
+        lambda: "test-admin@example.com"
+    )
+
     app.dependency_overrides[require_reviewer] = (
         lambda: "test-reviewer@example.com"
     )
+
     app.dependency_overrides[require_action_operator] = (
         lambda: "test-operator@example.com"
     )
+
     app.dependency_overrides[require_audit_reader] = (
         lambda: "test-audit-reader@example.com"
     )

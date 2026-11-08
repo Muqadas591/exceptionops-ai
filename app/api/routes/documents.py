@@ -14,6 +14,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.authorization import require_reviewer
 from app.db.session import get_db
 from app.models.document import Document
 from app.schemas.document import DocumentRead
@@ -26,7 +27,7 @@ from app.services.document_storage import (
     DocumentValidationError,
     UploadTooLargeError,
 )
-from app.core.authorization import require_reviewer
+
 
 router = APIRouter(
     prefix="/documents",
@@ -51,11 +52,13 @@ async def upload_document(
             file,
             actor=actor,
         )
+
     except UploadTooLargeError as exc:
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
             detail=str(exc),
         ) from exc
+
     except DuplicateDocumentError as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -64,6 +67,7 @@ async def upload_document(
                 "document_id": exc.document_id,
             },
         ) from exc
+
     except DocumentValidationError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -77,12 +81,21 @@ def list_documents(
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
 ) -> list[Document]:
+    """
+    List all document records, including records whose content was purged.
+
+    Metadata remains available for business traceability.
+    """
     statement = (
         select(Document)
-        .order_by(Document.created_at.desc(), Document.id.desc())
+        .order_by(
+            Document.created_at.desc(),
+            Document.id.desc(),
+        )
         .limit(limit)
         .offset(offset)
     )
+
     return list(db.scalars(statement).all())
 
 
@@ -116,6 +129,15 @@ def download_document(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Document not found.",
+        )
+
+    if document.content_status != "available":
+        raise HTTPException(
+            status_code=status.HTTP_410_GONE,
+            detail=(
+                "Document content is no longer available. "
+                "Its metadata and business history are retained."
+            ),
         )
 
     path: Path = get_document_file_path(document)

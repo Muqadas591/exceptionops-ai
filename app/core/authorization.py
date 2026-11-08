@@ -1,7 +1,17 @@
+
 from fastapi import Depends
 
 from app.core.authentication import require_roles
 from app.models.user import User
+
+
+def require_admin(
+    user: User = Depends(
+        require_roles("admin")
+    ),
+) -> str:
+    """Allow administrators only."""
+    return user.email
 
 
 def require_reviewer(
@@ -20,6 +30,8 @@ def require_action_operator(
 ) -> str:
     """Allow administrators and action operators."""
     return user.email
+
+
 def require_audit_reader(
     user: User = Depends(
         require_roles("admin", "action_operator")
