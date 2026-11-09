@@ -1,6 +1,7 @@
 
 from functools import lru_cache
 from pathlib import Path, PurePosixPath, PureWindowsPath
+from urllib.parse import urlsplit
 
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -19,6 +20,81 @@ def is_absolute_storage_path(value: str) -> bool:
     )
 
 
+def is_valid_production_secret(secret: str) -> bool:
+    """
+    Check that a production secret is configured and is not an
+    obvious placeholder or a low-diversity repeated value.
+
+    This is a configuration sanity check, not an entropy measurement.
+    """
+    if not secret or len(secret) < 32:
+        return False
+
+    if len(set(secret)) < 8:
+        return False
+
+    lowered = secret.strip().lower()
+
+    placeholders = (
+        "replace_with_",
+        "change_me",
+        "changeme",
+        "your_secret",
+        "your-secret",
+        "password",
+    )
+
+    if any(marker in lowered for marker in placeholders):
+        return False
+
+    if secret != secret.strip():
+        return False
+
+    return True
+
+
+def is_valid_production_origin(origin: str) -> bool:
+    """Validate an individual production CORS origin."""
+    if not origin or "*" in origin:
+        return False
+
+    try:
+        parsed = urlsplit(origin)
+    except ValueError:
+        return False
+
+    if parsed.scheme not in {"http", "https"}:
+        return False
+
+    if not parsed.hostname:
+        return False
+
+    if parsed.username or parsed.password:
+        return False
+
+    # An origin must not contain a path, query, or fragment.
+    if parsed.path not in {"", "/"}:
+        return False
+
+    if parsed.query or parsed.fragment:
+        return False
+
+    # Non-local production origins must use HTTPS.
+    local_hosts = {
+        "localhost",
+        "127.0.0.1",
+        "::1",
+    }
+
+    if (
+        parsed.scheme == "http"
+        and parsed.hostname.lower() not in local_hosts
+    ):
+        return False
+
+    return True
+
+
 class Settings(BaseSettings):
     # Application.
     app_name: str = "ExceptionOps AI"
@@ -31,10 +107,29 @@ class Settings(BaseSettings):
         "postgresql+psycopg://exceptionops:"
         "change_me_local_only@localhost:5432/exceptionops"
     )
-    database_pool_size: int = Field(default=5, ge=1, le=20)
-    database_max_overflow: int = Field(default=5, ge=0, le=30)
-    database_pool_timeout_seconds: int = Field(default=30, ge=1, le=120)
-    database_pool_recycle_seconds: int = Field(default=1800, ge=60)
+
+    database_pool_size: int = Field(
+        default=5,
+        ge=1,
+        le=20,
+    )
+
+    database_max_overflow: int = Field(
+        default=5,
+        ge=0,
+        le=30,
+    )
+
+    database_pool_timeout_seconds: int = Field(
+        default=30,
+        ge=1,
+        le=120,
+    )
+
+    database_pool_recycle_seconds: int = Field(
+        default=1800,
+        ge=60,
+    )
 
     # Document ingestion and storage.
     max_upload_size_bytes: int = Field(
@@ -42,20 +137,16 @@ class Settings(BaseSettings):
         ge=1024,
         le=100 * 1024 * 1024,
     )
+
     document_storage_dir: str = ".local_storage/documents"
 
     # Retention policies.
-    # Zero means no age-based document eligibility is configured.
-    # It does NOT prevent an explicitly authorized admin purge.
     document_content_retention_days: int = Field(
         default=0,
         ge=0,
         le=36500,
     )
 
-    # Zero means audit events are retained indefinitely.
-    # A positive value is a review threshold only. Audit events are
-    # never automatically deleted by this application.
     audit_event_retention_days: int = Field(
         default=0,
         ge=0,
@@ -64,6 +155,7 @@ class Settings(BaseSettings):
 
     # Authentication.
     auth_secret_key: str = ""
+
     access_token_expire_minutes: int = Field(
         default=30,
         ge=5,
@@ -75,7 +167,10 @@ class Settings(BaseSettings):
         "http://localhost:5173,"
         "http://127.0.0.1:5173"
     )
-    allowed_hosts: str = "localhost,127.0.0.1,testserver"
+
+    allowed_hosts: str = (
+        "localhost,127.0.0.1,testserver"
+    )
 
     # API documentation.
     expose_api_docs: bool = True
@@ -123,15 +218,17 @@ class Settings(BaseSettings):
         errors: list[str] = []
 
         if self.debug:
-            errors.append("DEBUG must be false in production.")
+            errors.append(
+                "DEBUG must be false in production."
+            )
 
-        if (
-            len(self.auth_secret_key) < 32
-            or self.auth_secret_key.startswith("replace_with_")
+        if not is_valid_production_secret(
+            self.auth_secret_key
         ):
             errors.append(
-                "AUTH_SECRET_KEY must be a non-placeholder value with "
-                "at least 32 characters."
+                "AUTH_SECRET_KEY must be a strong, non-placeholder "
+                "secret with at least 32 characters and sufficient "
+                "character diversity."
             )
 
         if (
@@ -139,31 +236,48 @@ class Settings(BaseSettings):
             or "replace_with_" in self.database_url
         ):
             errors.append(
-                "DATABASE_URL still contains the local placeholder password."
+                "DATABASE_URL still contains a placeholder password."
             )
 
         if self.database_url.startswith("sqlite"):
             errors.append(
-                "Production must use a supported persistent database, "
+                "Production must use a persistent database, "
                 "not SQLite."
             )
 
-        if not self.cors_origins_list:
+        origins = self.cors_origins_list
+
+        if not origins:
             errors.append(
-                "CORS_ALLOWED_ORIGINS must contain the frontend origin."
+                "CORS_ALLOWED_ORIGINS must contain a frontend origin."
+            )
+        elif not all(
+            is_valid_production_origin(origin)
+            for origin in origins
+        ):
+            errors.append(
+                "Production CORS origins must be valid, non-wildcard "
+                "origins. Non-local origins must use HTTPS."
             )
 
-        if not self.allowed_hosts_list:
-            errors.append("ALLOWED_HOSTS must not be empty.")
+        hosts = self.allowed_hosts_list
 
-        if "*" in self.allowed_hosts_list:
+        if not hosts:
             errors.append(
-                "ALLOWED_HOSTS must not contain '*' in production."
+                "ALLOWED_HOSTS must not be empty."
             )
 
-        if not is_absolute_storage_path(self.document_storage_dir):
+        if any("*" in host for host in hosts):
             errors.append(
-                "DOCUMENT_STORAGE_DIR must be an absolute path in production."
+                "ALLOWED_HOSTS must not contain wildcard entries."
+            )
+
+        if not is_absolute_storage_path(
+            self.document_storage_dir
+        ):
+            errors.append(
+                "DOCUMENT_STORAGE_DIR must be an absolute path "
+                "in production."
             )
 
         if errors:

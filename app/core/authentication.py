@@ -1,8 +1,15 @@
+
 from datetime import datetime, timedelta, timezone
+import uuid
 
 import jwt
+
 from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi.security import (
+    HTTPAuthorizationCredentials,
+    HTTPBearer,
+)
+
 from pwdlib import PasswordHash
 from sqlalchemy.orm import Session
 
@@ -16,6 +23,12 @@ password_hasher = PasswordHash.recommended()
 bearer_scheme = HTTPBearer(auto_error=False)
 
 JWT_ALGORITHM = "HS256"
+
+JWT_ISSUER = "exceptionops-ai"
+
+JWT_AUDIENCE = "exceptionops-ai-api"
+
+JWT_ACCESS_TOKEN_USE = "access"
 
 
 def _get_secret_key() -> str:
@@ -53,7 +66,7 @@ def verify_password(
 
 
 def create_access_token(user: User) -> str:
-    """Create a short-lived signed access token."""
+    """Create a short-lived, service-specific access token."""
     settings = get_settings()
 
     now = datetime.now(timezone.utc)
@@ -66,6 +79,10 @@ def create_access_token(user: User) -> str:
         "sub": str(user.id),
         "iat": now,
         "exp": expires_at,
+        "iss": JWT_ISSUER,
+        "aud": JWT_AUDIENCE,
+        "jti": uuid.uuid4().hex,
+        "token_use": JWT_ACCESS_TOKEN_USE,
     }
 
     return jwt.encode(
@@ -84,8 +101,8 @@ def get_current_user(
     """
     Validate the bearer token and load the current active user.
 
-    The user's role is read from the database, rather than trusted
-    from a role claim supplied by the client.
+    Roles are always read from the database. Client-supplied role
+    claims are never trusted.
     """
     if credentials is None:
         raise HTTPException(
@@ -99,10 +116,25 @@ def get_current_user(
             credentials.credentials,
             _get_secret_key(),
             algorithms=[JWT_ALGORITHM],
+            issuer=JWT_ISSUER,
+            audience=JWT_AUDIENCE,
             options={
-                "require": ["sub", "iat", "exp"],
+                "require": [
+                    "sub",
+                    "iat",
+                    "exp",
+                    "iss",
+                    "aud",
+                    "jti",
+                    "token_use",
+                ],
             },
         )
+
+        if payload.get("token_use") != JWT_ACCESS_TOKEN_USE:
+            raise jwt.InvalidTokenError(
+                "Invalid token purpose."
+            )
 
         subject = payload.get("sub")
 
@@ -112,6 +144,11 @@ def get_current_user(
             )
 
         user_id = int(subject)
+
+        if user_id <= 0:
+            raise jwt.InvalidTokenError(
+                "Invalid user identifier."
+            )
 
     except (
         jwt.InvalidTokenError,
@@ -146,7 +183,10 @@ def require_roles(*allowed_roles: str):
         if user.role not in allowed_roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="You do not have permission to perform this action.",
+                detail=(
+                    "You do not have permission "
+                    "to perform this action."
+                ),
             )
 
         return user

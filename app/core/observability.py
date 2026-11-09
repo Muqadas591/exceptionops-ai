@@ -7,13 +7,18 @@ import logging
 import re
 import time
 import uuid
+
 from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import Request
 from fastapi.responses import JSONResponse
+
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
+
+from app.core.config import get_settings
+from app.core.security_headers import apply_security_headers
 
 
 request_id_context: contextvars.ContextVar[str] = (
@@ -22,8 +27,9 @@ request_id_context: contextvars.ContextVar[str] = (
 
 REQUEST_ID_HEADER = "X-Request-ID"
 
-# Restrict caller-supplied request IDs to safe, predictable characters.
-REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9._-]{1,128}$")
+REQUEST_ID_PATTERN = re.compile(
+    r"^[A-Za-z0-9._-]{1,128}$"
+)
 
 
 class RequestContextFilter(logging.Filter):
@@ -37,14 +43,20 @@ class RequestContextFilter(logging.Filter):
 
 
 class JSONFormatter(logging.Formatter):
-    """Format application log records as one JSON object per line."""
+    """Format application log records as JSON."""
 
     def format(self, record: logging.LogRecord) -> str:
         payload: dict[str, Any] = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(
+                timezone.utc
+            ).isoformat(),
+
             "level": record.levelname,
+
             "logger": record.name,
+
             "message": record.getMessage(),
+
             "request_id": getattr(
                 record,
                 "request_id",
@@ -52,21 +64,22 @@ class JSONFormatter(logging.Formatter):
             ),
         }
 
-        # Add explicitly supplied structured fields.
         reserved = set(
             logging.makeLogRecord({}).__dict__.keys()
         )
 
         for key, value in record.__dict__.items():
-            if key not in reserved and key not in payload:
-                if key.startswith("_"):
-                    continue
+            if key in reserved or key in payload:
+                continue
 
-                if isinstance(
-                    value,
-                    (str, int, float, bool),
-                ) or value is None:
-                    payload[key] = value
+            if key.startswith("_"):
+                continue
+
+            if isinstance(
+                value,
+                (str, int, float, bool),
+            ) or value is None:
+                payload[key] = value
 
         if record.exc_info:
             payload["exception_type"] = (
@@ -88,16 +101,21 @@ def configure_logging(
     """
     Configure one application-wide logging handler.
 
-    Logs are written to stdout/stderr through StreamHandler so that
-    local terminals and hosting-platform log collectors can capture them.
+    Logs go to stdout/stderr so local terminals and hosting
+    platforms can capture them.
     """
     root_logger = logging.getLogger()
 
     handler = logging.StreamHandler()
-    handler.addFilter(RequestContextFilter())
+
+    handler.addFilter(
+        RequestContextFilter()
+    )
 
     if environment.strip().lower() == "production":
-        handler.setFormatter(JSONFormatter())
+        handler.setFormatter(
+            JSONFormatter()
+        )
     else:
         handler.setFormatter(
             logging.Formatter(
@@ -107,31 +125,50 @@ def configure_logging(
             )
         )
 
-    # Avoid duplicate handlers when create_app() is called repeatedly
-    # in tests or development.
     root_logger.handlers.clear()
+
     root_logger.addHandler(handler)
+
     root_logger.setLevel(logging.INFO)
 
-    # Keep third-party HTTP/database logs from becoming excessively noisy.
-    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+    logging.getLogger(
+        "uvicorn.access"
+    ).setLevel(logging.WARNING)
 
 
 class RequestContextMiddleware(BaseHTTPMiddleware):
-    """Assign a request ID and record the outcome of every HTTP request."""
+    """
+    Assign a request ID, apply security headers,
+    and record the outcome of every HTTP request.
+    """
 
-    async def dispatch(self, request: Request, call_next) -> Response:
-        supplied_id = request.headers.get(REQUEST_ID_HEADER, "")
+    async def dispatch(
+        self,
+        request: Request,
+        call_next,
+    ) -> Response:
+
+        settings = get_settings()
+
+        supplied_id = request.headers.get(
+            REQUEST_ID_HEADER,
+            "",
+        )
 
         if REQUEST_ID_PATTERN.fullmatch(supplied_id):
             request_id = supplied_id
         else:
             request_id = str(uuid.uuid4())
 
-        context_token = request_id_context.set(request_id)
+        context_token = request_id_context.set(
+            request_id
+        )
+
         started_at = time.perf_counter()
 
-        logger = logging.getLogger("exceptionops.api")
+        logger = logging.getLogger(
+            "exceptionops.api"
+        )
 
         try:
             response = await call_next(request)
@@ -141,7 +178,16 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
                 2,
             )
 
-            response.headers[REQUEST_ID_HEADER] = request_id
+            response.headers[REQUEST_ID_HEADER] = (
+                request_id
+            )
+
+            apply_security_headers(
+                response,
+                request,
+                is_production=settings.is_production,
+                api_prefix=settings.api_v1_prefix,
+            )
 
             logger.info(
                 "Request completed",
@@ -172,7 +218,7 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
                 },
             )
 
-            return JSONResponse(
+            response = JSONResponse(
                 status_code=500,
                 content={
                     "detail": "Internal server error.",
@@ -183,5 +229,16 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
                 },
             )
 
+            apply_security_headers(
+                response,
+                request,
+                is_production=settings.is_production,
+                api_prefix=settings.api_v1_prefix,
+            )
+
+            return response
+
         finally:
-            request_id_context.reset(context_token)
+            request_id_context.reset(
+                context_token
+            )
