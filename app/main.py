@@ -18,6 +18,7 @@ from app.api.routes.retention import router as retention_router
 from app.api.routes.reviews import router as reviews_router
 from app.api.routes.workflows import router as workflows_router
 from app.core.config import get_settings
+from app.core.lifespan import lifespan
 from app.core.observability import (
     RequestContextMiddleware,
     configure_logging,
@@ -44,6 +45,7 @@ def create_app() -> FastAPI:
         docs_url="/docs" if docs_enabled else None,
         redoc_url="/redoc" if docs_enabled else None,
         openapi_url="/openapi.json" if docs_enabled else None,
+        lifespan=lifespan,
     )
 
     @app.exception_handler(RequestValidationError)

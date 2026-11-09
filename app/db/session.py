@@ -1,3 +1,4 @@
+
 from collections.abc import Generator
 
 from sqlalchemy import create_engine
@@ -12,8 +13,8 @@ engine_options = {
     "pool_pre_ping": True,
 }
 
-# Pool sizing is useful for PostgreSQL deployments. SQLite uses
-# different pooling defaults and should not receive these arguments.
+# Pool sizing is useful for PostgreSQL deployments.
+# SQLite uses different pooling defaults.
 if not settings.database_url.startswith("sqlite"):
     engine_options.update(
         {
@@ -38,10 +39,20 @@ SessionLocal = sessionmaker(
 
 
 def get_db() -> Generator[Session, None, None]:
-    """Provide a database session and always close it afterward."""
+    """
+    Provide one database session per request.
+
+    If request processing raises an exception, roll back any
+    uncommitted transaction before closing the session.
+    """
     db = SessionLocal()
 
     try:
         yield db
+
+    except Exception:
+        db.rollback()
+        raise
+
     finally:
         db.close()

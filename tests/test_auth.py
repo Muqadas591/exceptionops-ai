@@ -290,3 +290,4 @@ def test_expired_token_is_rejected(
     assert response.json()["detail"] == (
         "Invalid or expired access token."
     )
+    

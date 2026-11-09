@@ -13,15 +13,22 @@ services:
     volumes:
       - exceptionops_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U exceptionops -d exceptionops"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U exceptionops -d exceptionops"
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
+    stop_grace_period: 30s
 
   api:
     build:
       context: .
       dockerfile: Dockerfile
+    init: true
     restart: unless-stopped
     env_file:
       - .env.docker
@@ -43,12 +50,13 @@ services:
           "CMD",
           "curl",
           "-fsS",
-          "http://127.0.0.1:8000/api/v1/health"
+          "http://127.0.0.1:8000/api/v1/ready"
         ]
       interval: 30s
-      timeout: 5s
+      timeout: 8s
       retries: 3
-      start_period: 20s
+      start_period: 25s
+    stop_grace_period: 40s
 
 volumes:
   exceptionops_postgres_data:

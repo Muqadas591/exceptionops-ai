@@ -25,7 +25,46 @@ def test_readiness_endpoint(client):
     assert response.json() == {
         "status": "ready",
         "database": "connected",
+        "storage": "writable",
     }
+
+
+def test_readiness_returns_503_when_database_is_unavailable(
+    client,
+    monkeypatch,
+):
+    from app.api.routes import health
+
+    monkeypatch.setattr(
+        health,
+        "check_database",
+        lambda db: False,
+    )
+
+    response = client.get("/api/v1/ready")
+
+    assert response.status_code == 503
+    assert response.json()["detail"]["database"] == "unavailable"
+    assert response.json()["detail"]["storage"] == "writable"
+
+
+def test_readiness_returns_503_when_storage_is_unavailable(
+    client,
+    monkeypatch,
+):
+    from app.api.routes import health
+
+    monkeypatch.setattr(
+        health,
+        "check_storage",
+        lambda settings: False,
+    )
+
+    response = client.get("/api/v1/ready")
+
+    assert response.status_code == 503
+    assert response.json()["detail"]["database"] == "connected"
+    assert response.json()["detail"]["storage"] == "unavailable"
 
 
 def test_openapi_documentation_is_available(client):
@@ -33,4 +72,3 @@ def test_openapi_documentation_is_available(client):
 
     assert response.status_code == 200
     assert "paths" in response.json()
-
