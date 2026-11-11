@@ -54,3 +54,5 @@ data/private/
 data/uploads/
 backups/
 /auth_debug_bundle.txt
+# Generated synthetic demonstration run reports
+data/synthetic/run-results/

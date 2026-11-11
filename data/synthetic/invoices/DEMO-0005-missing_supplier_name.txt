@@ -1,0 +1,13 @@
+EXCEPTIONOPS AI - SYNTHETIC DEMONSTRATION
+
+Demo Record ID: DEMO-0005
+Demo Scenario: missing_supplier_name
+Synthetic Record: true
+
+Invoice Number: SYN-INV-1004
+Invoice Date: 2026-10-17
+Currency: PKR
+Total: 950.00
+
+This document contains fictional demonstration data.
+It is not a real invoice and must not be used for payment.

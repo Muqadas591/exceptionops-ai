@@ -1,0 +1,14 @@
+EXCEPTIONOPS AI - SYNTHETIC DEMONSTRATION
+
+Demo Record ID: DEMO-0002
+Demo Scenario: duplicate_candidate
+Synthetic Record: true
+
+Invoice Number: SYN-INV-1001
+Supplier: Northstar Demo Supplies
+Invoice Date: 2026-10-15
+Currency: PKR
+Total: 1250.00
+
+This document contains fictional demonstration data.
+It is not a real invoice and must not be used for payment.

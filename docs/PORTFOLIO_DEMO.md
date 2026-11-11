@@ -1,180 +1,215 @@
-# ExceptionOps AI — Portfolio Demo Guide
 
-## 1. Overview
+# ExceptionOps AI — Portfolio Demonstration
 
-ExceptionOps AI explores AI-assisted invoice processing and business exception management.
+## Overview
 
-The demonstration uses fictional invoice data to illustrate normal processing cases and potential business exceptions.
+ExceptionOps AI is a synthetic invoice and supplier exception
+management platform.
 
-The focus is on the complete engineering workflow: ingestion, validation, exception handling, review, controlled actions, and traceability, where supported by the current implementation.
+It demonstrates an end-to-end workflow for:
 
-## 2. Business Problem
+- Document ingestion.
+- Rule-based invoice extraction.
+- Extraction confidence handling.
+- Deterministic business validation.
+- Duplicate invoice detection.
+- Workflow orchestration.
+- Human review and approval.
+- Controlled simulated actions.
+- Audit history and recovery controls.
 
-Invoice processing can involve repetitive data entry, comparisons against purchase orders, and the identification of inconsistent information.
+All public demonstration records are fictional.
 
-Potential issues include:
+## Business Problem
 
-- Invoice and purchase-order amount differences
-- Duplicate invoice submissions
-- Invalid amounts
-- Missing purchase-order information
-- Supplier identity mismatches
+Invoice processing involves repetitive document handling and
+identification of incomplete or inconsistent information.
 
-These conditions require careful handling. An automated system should identify relevant issues without treating every document as automatically approved.
+ExceptionOps AI demonstrates how an application can identify
+potential exceptions, preserve processing history, and route
+decisions to an authorized human reviewer.
 
-## 3. Demonstration Dataset
+The system is designed around an important distinction:
 
-Generate the synthetic data from the repository root:
+An extracted value is not automatically a verified business fact,
+and a validation result is not an approval to pay an invoice.
 
-```powershell
-python scripts/generate_synthetic_demo_data.py
-```
+## Demonstration Data
 
-The generated file is:
+Generate the dataset:
 
-`data/synthetic/demo_invoices.csv`
+    python -m scripts.generate_synthetic_demo_data
 
-All records are fictional.
+The generator creates:
 
-## 4. Demo Scenarios
+- `data/synthetic/demo_invoices.csv`
+- `data/synthetic/demo_manifest.json`
+- Six fictional TXT invoice documents in `data/synthetic/invoices/`
 
-### Scenario A — Matched Invoice
+The manifest records the expected results from the current
+rule-based extraction provider and business rules.
 
-The invoice amount and purchase-order amount are both PKR 1,250.00.
+## Demonstration Scenarios
 
-Purpose: illustrate a normal comparison case.
+### 1. Matched invoice example
 
-Expected scenario: eligible for the standard review process.
+All required fields are present.
 
-### Scenario B — Amount Mismatch
+The current extraction provider assigns supplier-name confidence
+of 0.75. The business-rule threshold is 0.80, so the document is
+routed for human review.
 
-The invoice amount is PKR 1,840.00, while the purchase-order amount is PKR 1,600.00.
+This example is not evidence of a completed purchase-order match.
 
-Difference: PKR 240.00.
+### 2. Duplicate candidate
 
-Purpose: illustrate the identification of a business discrepancy.
+The document repeats a previously extracted supplier name and
+invoice number.
 
-Expected scenario: requires amount-exception review.
+The evaluation can identify:
 
-### Scenario C — Duplicate Candidate
+    POSSIBLE_DUPLICATE_INVOICE
 
-The record repeats the supplier reference and invoice number from the first synthetic invoice.
+### 3. Zero amount
 
-Purpose: illustrate a potential duplicate.
+A zero invoice total triggers:
 
-Expected scenario: requires duplicate review.
+    TOTAL_AMOUNT_NOT_POSITIVE
 
-The dataset intentionally includes the repeated invoice identifier so that duplicate-handling behavior can be examined.
+The business decision is `blocked`.
 
-### Scenario D — Invalid Amount
+### 4. Missing invoice date
 
-The invoice amount is PKR 0.00.
+The required invoice date is absent and requires review.
 
-Purpose: illustrate validation of an invalid business value.
+### 5. Missing supplier name
 
-Expected scenario: requires data validation.
+The required supplier name is absent and requires review.
 
-### Scenario E — Missing Purchase Order
+### 6. Missing currency
 
-The invoice has an amount of PKR 780.00 but no purchase-order reference.
+The required currency is absent and requires review.
 
-Purpose: illustrate missing business information.
+## Run the Complete Demonstration
 
-Expected scenario: requires review of the missing purchase-order information.
+Generate the data:
 
-### Scenario F — Supplier Mismatch
+    python -m scripts.generate_synthetic_demo_data
 
-The invoice supplier and purchase-order supplier have similar but different names.
+Run the generator and business-rule tests:
 
-Purpose: illustrate supplier identity inconsistency.
+    pytest tests/test_synthetic_demo_data.py -q
 
-Expected scenario: requires supplier identity review.
+Start the API and database using the documented local setup.
 
-## 5. How to Demonstrate the Application
+Run the API-driven demonstration:
 
-1. Start the backend and database using the documented local setup.
-2. Start the frontend if the current implementation includes it.
-3. Verify that the application health endpoint or startup checks succeed.
-4. Upload a synthetic invoice through the application's supported upload workflow.
-5. Inspect the extracted information if extraction is supported for that document.
-6. Run the implemented validation or business-evaluation workflow.
-7. Inspect any exception information returned by the application.
-8. Demonstrate the supported human-review workflow.
-9. Inspect the action result and audit information if those features are available.
-10. Restart the backend and verify local document persistence.
+    python -m scripts.run_synthetic_demo --email demo.admin@example.test --base-url http://127.0.0.1:8001
 
-Use the application's actual supported endpoints and interface. Do not insert rows directly into the database to create the appearance of a successful end-to-end workflow.
+The runner uploads the documents, runs extraction and evaluation,
+creates workflows, creates or retrieves review records, and saves
+a JSON report.
 
-## 6. Reliability and Engineering
+The runner does not automatically approve reviews or execute
+external actions.
 
-The project is intended to demonstrate engineering practices beyond a simple proof of concept, including:
+## Human-in-the-Loop Demonstration
 
-- Structured application configuration
-- Database schema migrations
-- Input validation
-- Document-storage safeguards
-- Automated tests
-- Failure-path handling
-- Logging and request traceability where implemented
-- Idempotency and recovery controls where implemented
-- Explicit distinction between simulated and real external actions
+Use the frontend to inspect review findings.
 
-Describe only the controls that exist and have been verified in the current codebase.
+An authorized reviewer can:
 
-## 7. Safety Boundaries
+- Inspect extracted values.
+- Review business-rule findings.
+- Add comments.
+- Approve or reject a review with a decision note.
 
-This is a portfolio demonstration.
+Only an approved review can proceed to the supported action
+execution flow.
 
-- All public demo data is synthetic.
-- No confidential employer or customer documents should be used.
-- No real payments are made by the synthetic demo.
-- Simulated actions are not equivalent to live accounting or email integrations.
-- Human approval requirements depend on the actual application configuration.
-- Automated results should not be represented as guaranteed financial decisions.
+## Simulated Actions
 
-## 8. Screenshots to Capture
+The project includes simulated action connectors:
 
-Capture screenshots using the running application and synthetic data:
+- Email draft.
+- Accounting simulation.
+- Webhook simulation.
 
-1. Main dashboard or application landing page
-2. Invoice upload screen
-3. Document details or extraction results
-4. Validation or exception results
-5. Review queue or review details
-6. Action execution result, if implemented
-7. Audit history, if implemented
-8. Successful automated test run in the terminal
+These demonstrate controlled action execution and idempotency.
+They are not live email delivery, accounting posting or payments.
 
-Use the real application UI. Do not create fake screenshots or manually alter results to imply that a feature works.
+## Auditability
 
-Save approved screenshots under `docs/screenshots/` or another documented portfolio-assets directory.
+The demonstration can show related records for:
 
-Before publishing, inspect every screenshot for passwords, tokens, local usernames, private paths, and real business data.
+- Document upload.
+- Extraction.
+- Business evaluation.
+- Workflow events.
+- Human-review decisions.
+- Action execution.
+- Audit events.
 
-## 9. Known Limitations
+Use the real application interface and actual API responses.
 
-Document limitations observed in the current implementation, including supported file types, extraction limitations, external integrations, and deployment constraints.
+## Engineering Practices
 
-A successful synthetic demonstration does not establish production suitability for a real financial institution.
+The project includes implementation work for:
 
-## 10. Reproducibility
+- Authentication and role-based access.
+- Input validation.
+- Database migrations.
+- Local document storage.
+- Document retention.
+- Backup and restore procedures.
+- Security hardening.
+- Idempotency and action recovery.
+- Automated tests.
+- Operational health checks.
+- Structured logs and audit events.
 
-Generate the synthetic dataset:
+Describe only features that have been implemented and verified
+in the current repository.
 
-```powershell
-python scripts/generate_synthetic_demo_data.py
-```
+## Screenshots
 
-Run the generator tests:
+Capture genuine screenshots from the running application:
 
-```powershell
-pytest tests/test_synthetic_demo_data.py -q
-```
+1. Dashboard.
+2. Invoice list.
+3. Invoice details.
+4. Extraction results.
+5. Business evaluation.
+6. Exception queue.
+7. Human-review details.
+8. Workflow history.
+9. Simulated action result.
+10. Audit history.
+11. Automated test results.
 
-Run the backend tests:
+Save approved screenshots in:
 
-```powershell
-pytest -q
-```
+    docs/screenshots/
 
-Record the actual test result when publishing the project. Do not claim that all tests pass unless the full test suite has completed successfully.
+Inspect all screenshots for secrets, tokens, private paths and
+non-synthetic business data before publishing.
+
+## Known Limitations
+
+The current demonstration does not establish:
+
+- Real-world invoice extraction accuracy.
+- OCR performance on scanned documents.
+- Purchase-order matching.
+- Goods-receipt matching.
+- Live accounting integration.
+- Live email delivery.
+- Production financial authorization.
+- Production-scale throughput.
+- Multi-tenant isolation.
+
+The demonstration uses a deterministic rule-based provider and
+a small synthetic dataset.
+
+A successful synthetic demonstration is not proof of production
+suitability for a financial institution.
