@@ -1,0 +1,14 @@
+EXCEPTIONOPS AI - SYNTHETIC DEMONSTRATION
+
+Demo Record ID: DEMO-0003
+Demo Scenario: zero_amount
+Synthetic Record: true
+
+Invoice Number: SYN-INV-1002
+Supplier: Cedar Ridge Demo Components
+Invoice Date: 2026-10-16
+Currency: PKR
+Total: 0.00
+
+This document contains fictional demonstration data.
+It is not a real invoice and must not be used for payment.

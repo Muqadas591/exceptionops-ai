@@ -1,0 +1,80 @@
+{
+  "dataset_name": "ExceptionOps AI Synthetic Demo",
+  "dataset_version": "1.0",
+  "is_synthetic": true,
+  "record_count": 6,
+  "processing_provider": "rule_based_v1",
+  "business_rules_version": "phase4_v1",
+  "records": [
+    {
+      "demo_record_id": "DEMO-0001",
+      "scenario": "matched_invoice",
+      "filename": "DEMO-0001-matched_invoice.txt",
+      "expected_decision": "needs_review",
+      "expected_findings": [
+        "LOW_EXTRACTION_CONFIDENCE"
+      ],
+      "description": "All required invoice fields are present. Supplier extraction confidence is below the configured review threshold.",
+      "is_synthetic": true
+    },
+    {
+      "demo_record_id": "DEMO-0002",
+      "scenario": "duplicate_candidate",
+      "filename": "DEMO-0002-duplicate_candidate.txt",
+      "expected_decision": "needs_review",
+      "expected_findings": [
+        "LOW_EXTRACTION_CONFIDENCE",
+        "POSSIBLE_DUPLICATE_INVOICE"
+      ],
+      "description": "Repeats the supplier and invoice number from DEMO-0001 using different document content.",
+      "is_synthetic": true
+    },
+    {
+      "demo_record_id": "DEMO-0003",
+      "scenario": "zero_amount",
+      "filename": "DEMO-0003-zero_amount.txt",
+      "expected_decision": "blocked",
+      "expected_findings": [
+        "LOW_EXTRACTION_CONFIDENCE",
+        "TOTAL_AMOUNT_NOT_POSITIVE"
+      ],
+      "description": "A zero invoice amount triggers a hard validation failure.",
+      "is_synthetic": true
+    },
+    {
+      "demo_record_id": "DEMO-0004",
+      "scenario": "missing_invoice_date",
+      "filename": "DEMO-0004-missing_invoice_date.txt",
+      "expected_decision": "needs_review",
+      "expected_findings": [
+        "REQUIRED_FIELD_MISSING",
+        "LOW_EXTRACTION_CONFIDENCE"
+      ],
+      "description": "The invoice date is intentionally omitted.",
+      "is_synthetic": true
+    },
+    {
+      "demo_record_id": "DEMO-0005",
+      "scenario": "missing_supplier_name",
+      "filename": "DEMO-0005-missing_supplier_name.txt",
+      "expected_decision": "needs_review",
+      "expected_findings": [
+        "REQUIRED_FIELD_MISSING"
+      ],
+      "description": "The supplier name is intentionally omitted.",
+      "is_synthetic": true
+    },
+    {
+      "demo_record_id": "DEMO-0006",
+      "scenario": "missing_currency",
+      "filename": "DEMO-0006-missing_currency.txt",
+      "expected_decision": "needs_review",
+      "expected_findings": [
+        "REQUIRED_FIELD_MISSING",
+        "LOW_EXTRACTION_CONFIDENCE"
+      ],
+      "description": "The currency field and all other currency markers are intentionally omitted.",
+      "is_synthetic": true
+    }
+  ]
+}

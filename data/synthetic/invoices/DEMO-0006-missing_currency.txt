@@ -1,0 +1,13 @@
+EXCEPTIONOPS AI - SYNTHETIC DEMONSTRATION
+
+Demo Record ID: DEMO-0006
+Demo Scenario: missing_currency
+Synthetic Record: true
+
+Invoice Number: SYN-INV-1005
+Supplier: Meadowbrook Demo Packaging
+Invoice Date: 2026-10-18
+Total: 2340.00
+
+This document contains fictional demonstration data.
+It is not a real invoice and must not be used for payment.

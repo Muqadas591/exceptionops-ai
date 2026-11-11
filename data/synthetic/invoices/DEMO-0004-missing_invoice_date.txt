@@ -1,0 +1,13 @@
+EXCEPTIONOPS AI - SYNTHETIC DEMONSTRATION
+
+Demo Record ID: DEMO-0004
+Demo Scenario: missing_invoice_date
+Synthetic Record: true
+
+Invoice Number: SYN-INV-1003
+Supplier: Bluewater Demo Logistics
+Currency: PKR
+Total: 780.00
+
+This document contains fictional demonstration data.
+It is not a real invoice and must not be used for payment.
