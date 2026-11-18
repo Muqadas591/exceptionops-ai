@@ -171,6 +171,12 @@ Document contents and database records are stored separately. Back up both the d
 
 No cloud document-storage service is required for the local demonstration.
 
+## Free Trial Deployment
+
+For a free-tier deployment, see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+The deployment uses Render for the Dockerized app and Neon for PostgreSQL.
+The web app requires a user account to sign in; there is no public signup.
+
 ## Security and Data Boundaries
 
 - Use synthetic data in the public repository.

@@ -1,10 +1,12 @@
 
 import logging
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from app.api.routes.actions import router as actions_router
@@ -28,6 +30,9 @@ from app.core.observability import (
 
 def create_app() -> FastAPI:
     settings = get_settings()
+    frontend_dist = (
+        Path(__file__).resolve().parent.parent / "frontend_dist"
+    )
 
     configure_logging(environment=settings.app_env)
 
@@ -127,6 +132,11 @@ def create_app() -> FastAPI:
 
     @app.get("/", tags=["Root"])
     def root():
+        frontend_index = frontend_dist / "index.html"
+
+        if frontend_index.is_file():
+            return FileResponse(frontend_index)
+
         return {
             "application": settings.app_name,
             "status": "running",
@@ -182,6 +192,16 @@ def create_app() -> FastAPI:
         retention_router,
         prefix=settings.api_v1_prefix,
     )
+
+    if frontend_dist.is_dir():
+        app.mount(
+            "/",
+            StaticFiles(
+                directory=str(frontend_dist),
+                html=True,
+            ),
+            name="frontend",
+        )
 
     return app
 

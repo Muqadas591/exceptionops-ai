@@ -80,6 +80,32 @@ def test_allowed_hosts_are_parsed():
     ]
 
 
+def test_render_service_origin_and_hostname_are_included(
+    monkeypatch,
+):
+    monkeypatch.setenv(
+        "RENDER_EXTERNAL_URL",
+        "https://exceptionops-ai.onrender.com",
+    )
+    monkeypatch.setenv(
+        "RENDER_EXTERNAL_HOSTNAME",
+        "exceptionops-ai.onrender.com",
+    )
+
+    settings = production_settings(
+        cors_allowed_origins="",
+        allowed_hosts="localhost",
+    )
+
+    assert settings.cors_origins_list == [
+        "https://exceptionops-ai.onrender.com",
+    ]
+    assert settings.allowed_hosts_list == [
+        "localhost",
+        "exceptionops-ai.onrender.com",
+    ]
+
+
 def test_docs_are_enabled_in_development():
     settings = Settings(
         _env_file=None,

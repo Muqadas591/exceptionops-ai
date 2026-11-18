@@ -1,5 +1,6 @@
 
 from functools import lru_cache
+import os
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from urllib.parse import urlsplit
 
@@ -186,20 +187,40 @@ class Settings(BaseSettings):
     @property
     def cors_origins_list(self) -> list[str]:
         """Parse comma-separated frontend origins."""
-        return [
+        origins = [
             origin.strip().rstrip("/")
             for origin in self.cors_allowed_origins.split(",")
             if origin.strip()
         ]
 
+        render_origin = os.environ.get(
+            "RENDER_EXTERNAL_URL",
+            "",
+        ).strip().rstrip("/")
+
+        if render_origin and render_origin not in origins:
+            origins.append(render_origin)
+
+        return origins
+
     @property
     def allowed_hosts_list(self) -> list[str]:
         """Parse comma-separated trusted hostnames."""
-        return [
+        hosts = [
             host.strip()
             for host in self.allowed_hosts.split(",")
             if host.strip()
         ]
+
+        render_hostname = os.environ.get(
+            "RENDER_EXTERNAL_HOSTNAME",
+            "",
+        ).strip()
+
+        if render_hostname and render_hostname not in hosts:
+            hosts.append(render_hostname)
+
+        return hosts
 
     @property
     def is_production(self) -> bool:

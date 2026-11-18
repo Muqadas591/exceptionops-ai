@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: exceptionops-ai
+    runtime: docker
+    plan: free
+    branch: main
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/v1/ready
+    autoDeploy: true
+    startCommand: alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT --timeout-graceful-shutdown 30
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: AUTH_SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_POOL_SIZE
+        value: "2"
+      - key: DATABASE_MAX_OVERFLOW
+        value: "0"
+      - key: DOCUMENT_STORAGE_DIR
+        value: /tmp/exceptionops-documents
+      - key: CORS_ALLOWED_ORIGINS
+        value: ""
+      - key: ALLOWED_HOSTS
+        value: localhost,127.0.0.1
